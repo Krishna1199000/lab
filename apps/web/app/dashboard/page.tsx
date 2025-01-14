@@ -3,11 +3,14 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../../ui/button";
+import { ThemeToggle } from "../components/theme.toggle";
 import { LogOut, LayoutDashboard, Plus, Beaker, Pencil, Trash2, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../../ui/card";
 import { toast } from "sonner";
 import { getRelativeTime } from "../lib/utils/format-time";
+import { fadeIn, stagger, slideIn, scaleIn, springConfig } from "../lib/animations/animations";
 
 interface Lab {
   id: string;
@@ -106,108 +109,261 @@ export default function Dashboard() {
   const ownedLabs = labs.filter(lab => lab.isOwner);
   const otherLabs = labs.filter(lab => !lab.isOwner);
 
-  const renderTimeInfo = (lab: Lab) => (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <Clock className="h-3 w-3" />
-      <span>Created {getRelativeTime(lab.createdAt)}</span>
-      {lab.updatedAt !== lab.createdAt && (
-        <span className="italic">(edited {getRelativeTime(lab.updatedAt)})</span>
-      )}
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b">
+    <motion.div 
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      variants={stagger}
+      className="min-h-screen bg-background dark:bg-gradient-to-b dark:from-background dark:to-background/50"
+    >
+      <motion.nav 
+        variants={slideIn}
+        className="border-b backdrop-blur-sm bg-background/80 sticky top-0 z-50"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+            <motion.div 
+              variants={fadeIn}
+              className="flex items-center"
+            >
               <LayoutDashboard className="h-6 w-6 text-primary" />
               <span className="ml-2 text-xl font-semibold">Dashboard</span>
-            </div>
+            </motion.div>
             <div className="flex items-center gap-4">
-              <div className="text-sm">
-                Welcome, {session.user?.name || session.user?.email}
-                {isAdmin && <span className="ml-2 text-primary">(Admin)</span>}
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => signOut({ callbackUrl: "/auth" })}
-                className="flex items-center gap-2"
+              <motion.div 
+                variants={fadeIn}
+                className="text-sm"
               >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
+                Welcome, {session.user?.name || session.user?.email}
+                {isAdmin && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="ml-2 text-primary"
+                  >
+                    (Admin)
+                  </motion.span>
+                )}
+              </motion.div>
+              <ThemeToggle />
+              <motion.div variants={fadeIn}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => signOut({ callbackUrl: "/auth" })}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </motion.div>
             </div>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {isAdmin && (
-            <>
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-bold">Your Labs</h2>
-                <Button
-                  onClick={() => router.push('/dashboard/create-lab')}
-                  className="flex items-center gap-2"
+            <AnimatePresence mode="wait">
+              <motion.div layout>
+                <motion.div 
+                  variants={fadeIn}
+                  className="flex justify-between items-center mb-8"
                 >
-                  <Plus className="h-4 w-4" />
-                  Create New Lab
-                </Button>
-              </div>
-
-              {ownedLabs.length === 0 ? (
-                <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 mb-8">
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Beaker className="h-12 w-12 text-primary/50 mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No Labs Created Yet</h3>
-                    <p className="text-muted-foreground mb-6">Create your first lab to get started</p>
+                  <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/50">
+                    Your Labs
+                  </h2>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <Button
                       onClick={() => router.push('/dashboard/create-lab')}
-                      className="group relative overflow-hidden"
+                      className="flex items-center gap-2 bg-primary hover:bg-primary/90"
                     >
-                      <div className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Create Lab
-                      </div>
+                      <Plus className="h-4 w-4" />
+                      Create New Lab
                     </Button>
+                  </motion.div>
+                </motion.div>
+
+                {ownedLabs.length === 0 ? (
+                  <motion.div
+                    variants={scaleIn}
+                    transition={springConfig}
+                  >
+                    <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/5 dark:to-primary/10 mb-8 overflow-hidden relative">
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
+                        animate={{
+                          x: ["0%", "100%"],
+                        }}
+                        transition={{
+                          duration: 3,
+                          ease: "linear",
+                          repeat: Infinity,
+                        }}
+                      />
+                      <CardContent className="flex flex-col items-center justify-center py-12 relative">
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.2, ...springConfig }}
+                        >
+                          <Beaker className="h-12 w-12 text-primary mb-4" />
+                        </motion.div>
+                        <h3 className="text-xl font-semibold mb-2">No Labs Created Yet</h3>
+                        <p className="text-muted-foreground mb-6">Create your first lab to get started</p>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Button
+                            onClick={() => router.push('/dashboard/create-lab')}
+                            className="group relative overflow-hidden"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Plus className="h-4 w-4" />
+                              Create Lab
+                            </div>
+                          </Button>
+                        </motion.div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    variants={stagger}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+                  >
+                    {ownedLabs.map((lab, index) => (
+                      <motion.div
+                        key={lab.id}
+                        variants={scaleIn}
+                        transition={{
+                          delay: index * 0.1,
+                          ...springConfig
+                        }}
+                      >
+                        <Card className="hover:shadow-lg transition-shadow dark:hover:shadow-primary/10 group">
+                          <CardHeader>
+                            <CardTitle className="flex justify-between items-start">
+                              <span className="text-xl font-semibold group-hover:text-primary transition-colors">
+                                {lab.title}
+                              </span>
+                              <div className="flex gap-2">
+                                <motion.div whileHover={{ scale: 1.1 }}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => router.push(`/dashboard/edit-lab/${lab.id}`)}
+                                    className="h-8 w-8 hover:text-primary"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDelete(lab.id)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </motion.div>
+                              </div>
+                            </CardTitle>
+                            <CardDescription>
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center gap-2 mt-2"
+                              >
+                                <span className="px-2 py-1 rounded-full bg-primary/10 text-xs">
+                                  {lab.difficulty}
+                                </span>
+                                <span className="text-sm">{lab.duration} minutes</span>
+                              </motion.div>
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-muted-foreground line-clamp-2">{lab.description}</p>
+                          </CardContent>
+                          <CardFooter>
+                            <motion.div 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.5 }}
+                              className="flex items-center gap-2 text-xs text-muted-foreground"
+                            >
+                              <Clock className="h-3 w-3" />
+                              <span>Created {getRelativeTime(lab.createdAt)}</span>
+                              {lab.updatedAt !== lab.createdAt && (
+                                <span className="italic">(edited {getRelativeTime(lab.updatedAt)})</span>
+                              )}
+                            </motion.div>
+                          </CardFooter>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+          <motion.div 
+            variants={fadeIn}
+            className="mt-8"
+          >
+            <h2 className="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/50">
+              All Labs
+            </h2>
+            {labs.length === 0 ? (
+              <motion.div variants={scaleIn}>
+                <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Beaker className="h-12 w-12 text-primary/50 mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Labs Available</h3>
+                    <p className="text-muted-foreground">No labs have been created yet</p>
                   </CardContent>
                 </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {ownedLabs.map((lab) => (
-                    <Card key={lab.id} className="hover:shadow-lg transition-shadow">
+              </motion.div>
+            ) : (
+              <motion.div 
+                variants={stagger}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                {labs.map((lab, index) => (
+                  <motion.div
+                    key={lab.id}
+                    variants={scaleIn}
+                    transition={{
+                      delay: index * 0.1,
+                      ...springConfig
+                    }}
+                  >
+                    <Card className="hover:shadow-lg transition-shadow dark:hover:shadow-primary/10 group">
                       <CardHeader>
-                        <CardTitle className="flex justify-between items-start">
-                          <span className="text-xl font-semibold">{lab.title}</span>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => router.push(`/dashboard/edit-lab/${lab.id}`)}
-                              className="h-8 w-8"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(lab.id)}
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                        <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
+                          {lab.title}
                         </CardTitle>
                         <CardDescription>
-                          <div className="flex items-center gap-2 mt-2">
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-2 mt-2"
+                          >
                             <span className="px-2 py-1 rounded-full bg-primary/10 text-xs">
                               {lab.difficulty}
                             </span>
                             <span className="text-sm">{lab.duration} minutes</span>
+                          </motion.div>
+                          <div className="mt-2 text-sm">
+                            by {lab.author.name || lab.author.email}
                           </div>
                         </CardDescription>
                       </CardHeader>
@@ -215,57 +371,28 @@ export default function Dashboard() {
                         <p className="text-muted-foreground line-clamp-2">{lab.description}</p>
                       </CardContent>
                       <CardFooter>
-                        {renderTimeInfo(lab)}
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.5 }}
+                          className="flex items-center gap-2 text-xs text-muted-foreground"
+                        >
+                          <Clock className="h-3 w-3" />
+                          <span>Created {getRelativeTime(lab.createdAt)}</span>
+                          {lab.updatedAt !== lab.createdAt && (
+                            <span className="italic">(edited {getRelativeTime(lab.updatedAt)})</span>
+                          )}
+                        </motion.div>
                       </CardFooter>
                     </Card>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold mb-6">All Labs</h2>
-            {labs.length === 0 ? (
-              <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Beaker className="h-12 w-12 text-primary/50 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">No Labs Available</h3>
-                  <p className="text-muted-foreground">No labs have been created yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {labs.map((lab) => (
-                  <Card key={lab.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-xl font-semibold">{lab.title}</CardTitle>
-                      <CardDescription>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="px-2 py-1 rounded-full bg-primary/10 text-xs">
-                            {lab.difficulty}
-                          </span>
-                          <span className="text-sm">{lab.duration} minutes</span>
-                        </div>
-                        <div className="mt-2 text-sm">
-                          by {lab.author.name || lab.author.email}
-                        </div>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground line-clamp-2">{lab.description}</p>
-                    </CardContent>
-                    <CardFooter>
-                      {renderTimeInfo(lab)}
-                    </CardFooter>
-                  </Card>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         </div>
       </main>
-    </div>
+    </motion.div>
   );
 }
 
