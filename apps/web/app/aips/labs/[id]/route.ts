@@ -2,20 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@repo/db/client";
 import { writeFile } from "fs/promises";
 import path from "path";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../api/auth.config";
 
-// GET /api/labs/[id] - Get a specific lab
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = context.params.id;
+    const session = await getServerSession(authOptions);
     
     const lab = await db.lab.findUnique({
-      where: { id },
+      where: { id: params.id },
       include: {
         author: {
           select: {
+            id: true,
             name: true,
             email: true,
           },
@@ -30,7 +32,13 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(lab);
+    // Add isOwner flag - only true if user is admin AND is the author
+    const response = {
+      ...lab,
+      isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch lab" },
@@ -39,13 +47,48 @@ export async function GET(
   }
 }
 
-// PUT /api/labs/[id] - Update a lab
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = context.params.id;
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Forbidden: Only administrators can edit labs" },
+        { status: 403 }
+      );
+    }
+
+    // Check if the lab exists and belongs to the current admin
+    const existingLab = await db.lab.findUnique({
+      where: { id: params.id }
+    });
+
+    if (!existingLab) {
+      return NextResponse.json(
+        { error: "Lab not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if the current admin is the author
+    if (existingLab.authorId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only edit your own labs" },
+        { status: 403 }
+      );
+    }
+
     const formData = await req.formData();
     const updateData: any = {};
 
@@ -77,15 +120,12 @@ export async function PUT(
       const bytes = await environmentImage.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
-      // Create unique filename
       const filename = `${Date.now()}-${environmentImage.name}`;
       const uploadDir = path.join(process.cwd(), 'public', 'uploads');
       const filepath = path.join(uploadDir, filename);
 
-      // Save file
       await writeFile(filepath, buffer);
 
-      // Update environment with new image URL
       const imageUrl = `/uploads/${filename}`;
       const existingEnvironment = updateData.environment || { images: [] };
       existingEnvironment.images = [imageUrl, ...existingEnvironment.images];
@@ -93,7 +133,7 @@ export async function PUT(
     }
 
     const lab = await db.lab.update({
-      where: { id },
+      where: { id: params.id },
       data: updateData,
     });
 
@@ -107,16 +147,50 @@ export async function PUT(
   }
 }
 
-// DELETE /api/labs/[id] - Delete a lab
 export async function DELETE(
   req: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = context.params.id;
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Forbidden: Only administrators can delete labs" },
+        { status: 403 }
+      );
+    }
+
+    // Check if the lab exists and belongs to the current admin
+    const existingLab = await db.lab.findUnique({
+      where: { id: params.id }
+    });
+
+    if (!existingLab) {
+      return NextResponse.json(
+        { error: "Lab not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if the current admin is the author
+    if (existingLab.authorId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only delete your own labs" },
+        { status: 403 }
+      );
+    }
     
     await db.lab.delete({
-      where: { id },
+      where: { id: params.id },
     });
 
     return NextResponse.json(
@@ -130,3 +204,4 @@ export async function DELETE(
     );
   }
 }
+

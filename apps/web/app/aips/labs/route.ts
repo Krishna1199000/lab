@@ -3,9 +3,28 @@ import { writeFile } from "fs/promises";
 import { join } from "path";
 import { mkdir } from "fs/promises";
 import db from "@repo/db/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../api/auth.config";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: You must be logged in to create a lab" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Forbidden: Only administrators can create labs" },
+        { status: 403 }
+      );
+    }
+
     const formData = await req.formData();
     
     // Validate required fields first
@@ -38,16 +57,7 @@ export async function POST(req: NextRequest) {
       environment.images = [imagePath, ...(environment.images || [])];
     }
 
-    // Validate authorId
-    const authorId = formData.get("authorId") as string;
-    if (!authorId) {
-      return NextResponse.json(
-        { error: "Author ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Create the lab with validated data
+    // Create the lab with validated data and current user as author
     const lab = await db.lab.create({
       data: {
         title: formData.get("title") as string,
@@ -60,7 +70,7 @@ export async function POST(req: NextRequest) {
         environment,
         coveredTopics,
         steps,
-        authorId,
+        authorId: session.user.id,
         published: false
       },
     });
@@ -69,7 +79,6 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Server error:', error);
     
-    // Handle specific database errors
     if (error.code === 'P2002') {
       return NextResponse.json(
         { error: "A lab with this title already exists" },
@@ -105,17 +114,30 @@ async function saveFile(file: File) {
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    
     const labs = await db.lab.findMany({
       include: {
         author: {
           select: {
+            id: true,
             name: true,
             email: true,
           },
         },
       },
+      orderBy: {
+        createdAt: 'desc' // Show newest labs first
+      },
     });
-    return NextResponse.json(labs);
+
+    // Add isOwner flag to each lab - only true if user is admin AND is the author
+    const labsWithOwnership = labs.map(lab => ({
+      ...lab,
+      isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId
+    }));
+
+    return NextResponse.json(labsWithOwnership);
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch labs" },
@@ -123,3 +145,4 @@ export async function GET() {
     );
   }
 }
+

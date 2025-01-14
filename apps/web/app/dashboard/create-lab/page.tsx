@@ -174,7 +174,7 @@ export default function CreateLab() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.text();
         throw new Error(errorData.error || 'Failed to create lab');
       }
 
