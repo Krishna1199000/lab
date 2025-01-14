@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import db  from "@repo/db/client";
+import db from "@repo/db/client";
 
 // GET /api/labs/[id] - Get a specific lab
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const id = await context.params.id;
+    
     const lab = await db.lab.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         author: {
           select: {
@@ -38,9 +40,10 @@ export async function GET(
 // PUT /api/labs/[id] - Update a lab
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const id = await context.params.id;
     const formData = await req.formData();
     const updateData: any = {};
 
@@ -67,7 +70,7 @@ export async function PUT(
     });
 
     const lab = await db.lab.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     });
 
@@ -83,11 +86,13 @@ export async function PUT(
 // DELETE /api/labs/[id] - Delete a lab
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const id = await context.params.id;
+    
     await db.lab.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json(
