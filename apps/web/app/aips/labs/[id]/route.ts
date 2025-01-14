@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@repo/db/client";
+import { writeFile } from "fs/promises";
+import path from "path";
 
 // GET /api/labs/[id] - Get a specific lab
 export async function GET(
@@ -7,7 +9,7 @@ export async function GET(
   context: { params: { id: string } }
 ) {
   try {
-    const id = await context.params.id;
+    const id = context.params.id;
     
     const lab = await db.lab.findUnique({
       where: { id },
@@ -43,7 +45,7 @@ export async function PUT(
   context: { params: { id: string } }
 ) {
   try {
-    const id = await context.params.id;
+    const id = context.params.id;
     const formData = await req.formData();
     const updateData: any = {};
 
@@ -69,6 +71,27 @@ export async function PUT(
       }
     });
 
+    // Handle file upload if present
+    const environmentImage = formData.get("environmentImage") as File;
+    if (environmentImage) {
+      const bytes = await environmentImage.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // Create unique filename
+      const filename = `${Date.now()}-${environmentImage.name}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      const filepath = path.join(uploadDir, filename);
+
+      // Save file
+      await writeFile(filepath, buffer);
+
+      // Update environment with new image URL
+      const imageUrl = `/uploads/${filename}`;
+      const existingEnvironment = updateData.environment || { images: [] };
+      existingEnvironment.images = [imageUrl, ...existingEnvironment.images];
+      updateData.environment = existingEnvironment;
+    }
+
     const lab = await db.lab.update({
       where: { id },
       data: updateData,
@@ -76,6 +99,7 @@ export async function PUT(
 
     return NextResponse.json(lab);
   } catch (error) {
+    console.error('Update error:', error);
     return NextResponse.json(
       { error: "Failed to update lab" },
       { status: 500 }
@@ -89,7 +113,7 @@ export async function DELETE(
   context: { params: { id: string } }
 ) {
   try {
-    const id = await context.params.id;
+    const id = context.params.id;
     
     await db.lab.delete({
       where: { id },
