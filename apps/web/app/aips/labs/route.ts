@@ -115,7 +115,7 @@ async function saveFile(file: File) {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     const labs = await db.lab.findMany({
       include: {
         author: {

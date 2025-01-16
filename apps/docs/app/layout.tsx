@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css"
 import { ThemeProvider } from "./components/theme-provider";
-
+import { Providers } from "./components/providers";
 
 
 const geistSans = localFont({
@@ -27,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}>
+      <Providers>
       <ThemeProvider attribute="class" defaultTheme="dark">
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -36,6 +37,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
       </div>
     </ThemeProvider>
+      </Providers>
       
       </body>
     </html>

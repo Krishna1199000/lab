@@ -11,6 +11,7 @@ import { Icons } from "../components/icons"
 import { signIn } from "next-auth/react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 const signInSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -19,6 +20,7 @@ const signInSchema = z.object({
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
@@ -42,8 +44,14 @@ export default function SignInPage() {
         return
       }
 
-      window.location.href = "/"
+      // Wait for the session to be updated
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      
+      toast.success("Successfully signed in")
+      router.push("/dashboard")
+      router.refresh()
     } catch (error) {
+      console.error("Sign in error:", error)
       toast.error("Something went wrong")
     } finally {
       setIsLoading(false)
@@ -124,7 +132,7 @@ export default function SignInPage() {
             variant="outline"
             type="button"
             disabled={isLoading}
-            onClick={() => signIn("google", { callbackUrl: "/" })}
+            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
           >
             <Icons.google className="mr-2 h-4 w-4" />
             Google

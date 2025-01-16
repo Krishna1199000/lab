@@ -5,48 +5,35 @@ import path from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../api/auth.config";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const lab = await db.lab.findUnique({
-      where: { id: params.id },
+    const labs = await db.lab.findMany({
+      where: {
+        published: true,
+      },
       include: {
         author: {
           select: {
             id: true,
             name: true,
-            email: true,
+            image: true,
           },
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
 
-    if (!lab) {
-      return NextResponse.json(
-        { error: "Lab not found" },
-        { status: 404 }
-      );
-    }
-
-    // Add isOwner flag - only true if user is admin AND is the author
-    const response = {
-      ...lab,
-      isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId
-    };
-
-    return NextResponse.json(response);
+    return NextResponse.json(labs);
   } catch (error) {
+    console.error('Error fetching labs:', error);
     return NextResponse.json(
-      { error: "Failed to fetch lab" },
+      { error: 'Failed to fetch labs' },
       { status: 500 }
     );
   }
 }
-
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }

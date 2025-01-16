@@ -12,6 +12,7 @@ import { Icons } from "../components/icons"
 import { signIn } from "next-auth/react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useRouter } from "next/navigation";
 
 const signUpSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -24,6 +25,7 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showOtp, setShowOtp] = useState(false)
   const [phone, setPhone] = useState("")
+  const router = useRouter()
 
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
@@ -56,8 +58,22 @@ export default function SignUpPage() {
       setIsLoading(true)
       const result = await verifyOtp({ phone, otp })
       if (result.success) {
-        toast.success("Phone number verified")
-        window.location.href = "/signin"
+        toast.success("Account created successfully")
+        // Sign in the user automatically
+        const signInResult = await signIn("credentials", {
+          email: form.getValues("email"),
+          password: form.getValues("password"),
+          redirect: false,
+        })
+
+        if (signInResult?.error) {
+          toast.error("Error signing in")
+          router.push("/signin")
+          return
+        }
+
+        router.push("/dashboard")
+        router.refresh()
       }
     } catch (error) {
       toast.error("Invalid OTP")

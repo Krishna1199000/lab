@@ -1,6 +1,6 @@
 'use server'
 
-import db from "@repo/db/client"
+import db  from "@repo/db/client"
 import { hash } from "bcrypt"
 import { z } from "zod"
 
@@ -19,7 +19,6 @@ const otpSchema = z.object({
 export async function signUp(data: z.infer<typeof signUpSchema>) {
   const validated = signUpSchema.parse(data)
   
-  // Check if user already exists
   const exists = await db.user.findFirst({
     where: {
       email: validated.email,
@@ -30,15 +29,11 @@ export async function signUp(data: z.infer<typeof signUpSchema>) {
     throw new Error("Email already exists")
   }
 
-  // Generate OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
-  
-  // In production, send OTP via SMS here
-  console.log("OTP:", otp)
+  console.log("OTP:", otp) // In production, send via SMS
 
   const hashedPassword = await hash(validated.password, 10)
   
-  // Create user
   const user = await db.user.create({
     data: {
       name: validated.name,
@@ -58,17 +53,9 @@ export async function signUp(data: z.infer<typeof signUpSchema>) {
 export async function verifyOtp(data: z.infer<typeof otpSchema>) {
   const validated = otpSchema.parse(data)
   
-  // In production, verify OTP against stored value
   // For demo, accept any 6-digit OTP
   if (validated.otp.length === 6) {
-    await db.user.update({
-      where: { 
-        profile: {
-          role: validated.phone
-        }
-      },
-      data: { emailVerified: new Date() },
-    })
+    // In production, verify against stored OTP
     return { success: true }
   }
 
