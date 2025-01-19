@@ -5,35 +5,36 @@ import path from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../api/auth.config";
 
-export async function GET() {
-  try {
-    const labs = await db.lab.findMany({
-      where: {
-        published: true,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+// export async function GET() {
+//   try {
+//     const labs = await db.lab.findMany({
+//       where: {
+//         published: true,
+//       },
+//       include: {
+//         author: {
+//           select: {
+//             id: true,
+//             name: true,
+//             image: true,
+//           },
+//         },
+//       },
+//       orderBy: {
+//         createdAt: 'desc',
+//       },
+//     });
 
-    return NextResponse.json(labs);
-  } catch (error) {
-    console.error('Error fetching labs:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch labs' },
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json(labs);
+//   } catch (error) {
+//     console.error('Error fetching labs:', error);
+//     return NextResponse.json(
+//       { error: 'Failed to fetch labs' },
+//       { status: 500 }
+//     );
+//   }
+// }
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -48,7 +49,6 @@ export async function PUT(
       );
     }
 
-    // Check if user is admin
     if (session.user.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Forbidden: Only administrators can edit labs" },
@@ -56,7 +56,6 @@ export async function PUT(
       );
     }
 
-    // Check if the lab exists and belongs to the current admin
     const existingLab = await db.lab.findUnique({
       where: { id: params.id }
     });
@@ -68,7 +67,6 @@ export async function PUT(
       );
     }
 
-    // Check if the current admin is the author
     if (existingLab.authorId !== session.user.id) {
       return NextResponse.json(
         { error: "Forbidden: You can only edit your own labs" },
@@ -79,7 +77,6 @@ export async function PUT(
     const formData = await req.formData();
     const updateData: any = {};
 
-    // Extract all possible fields from formData
     const fields = [
       "title", "description", "difficulty", "duration",
       "objectives", "audience", "prerequisites",
@@ -101,7 +98,6 @@ export async function PUT(
       }
     });
 
-    // Handle file upload if present
     const environmentImage = formData.get("environmentImage") as File;
     if (environmentImage) {
       const bytes = await environmentImage.arrayBuffer();
@@ -148,7 +144,6 @@ export async function DELETE(
       );
     }
 
-    // Check if user is admin
     if (session.user.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Forbidden: Only administrators can delete labs" },
@@ -156,7 +151,6 @@ export async function DELETE(
       );
     }
 
-    // Check if the lab exists and belongs to the current admin
     const existingLab = await db.lab.findUnique({
       where: { id: params.id }
     });
@@ -168,7 +162,6 @@ export async function DELETE(
       );
     }
 
-    // Check if the current admin is the author
     if (existingLab.authorId !== session.user.id) {
       return NextResponse.json(
         { error: "Forbidden: You can only delete your own labs" },
