@@ -1,102 +1,120 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Clock, Beaker } from 'lucide-react';
-import { Input } from '../../../../web/ui/input';
-import { Card } from '../../../../web/ui/card';
-import { useRouter } from 'next/navigation';
-
-type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
-
-interface Lab {
-  id: string;
-  title: string;
-  difficulty: Difficulty;
-  duration: number;
-  description: string;
-  objectives: string[];
-  audience: string;
-  prerequisites: string;
-  coveredTopics: string[];
-  published: boolean;
-  author: {
-    name: string | null;
-    image: string | null;
-  };
-  createdAt: string;
-  updatedAt: string;
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Search, Clock, X } from "lucide-react"
+import { Input } from "../../../../web/ui/input"
+import { Card } from "../../../../web/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "../../../../web/ui/dialog"
+import { Button } from "../../../../web/ui/button"  
+import { Checkbox } from "../../../../web/ui/checkbox"
+import type { Lab } from "../../../../docs/app/types/lab" 
+const FILTER_OPTIONS = {
+  topics: ["Web Development", "Mobile Development", "Cloud Computing", "DevOps", "Data Science", "Machine Learning"],
+  contentTypes: ["Course", "Tutorial", "Workshop", "Documentation", "Video", "Interactive"],
+  levels: ["Beginner", "Intermediate", "Advanced"],
+  platforms: ["Web", "iOS", "Android", "Cross-platform"],
+  programming: ["JavaScript", "Python", "Java", "C++", "Ruby", "Go"],
+  tools: ["VS Code", "Git", "Docker", "Kubernetes", "AWS", "Firebase"],
 }
 
 const LabIcon = () => (
   <svg
-    aria-hidden="true"
-    xmlns="http://www.w3.org/2000/svg"
-    fill="currentColor"
-    viewBox="0 0 40 40"
     width="32"
     height="32"
+    viewBox="0 0 32 32"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
     className="text-emerald-500"
   >
-    <path
-      fillRule="evenodd"
-      d="M8 0a8 8 0 0 0-8 8v24a8 8 0 0 0 8 8h24a8 8 0 0 0 8-8V8a8 8 0 0 0-8-8H8zm16 17.675 7.231 9.943A4.018 4.018 0 0 1 27.981 34H12.02a4.017 4.017 0 0 1-3.25-6.382L16 17.675V8h-2V6h12v2h-2v9.675zM18 8v10.325L15.327 22h9.346L22 18.325V8h-4zm-5.981 24H27.98a2.02 2.02 0 0 0 1.633-3.206L26.127 24H13.873l-3.487 4.794A2.018 2.018 0 0 0 12.019 32z"
-      clipRule="evenodd"
-    />
+    <rect width="32" height="32" rx="6" fill="currentColor" />
+    <path d="M10 24h12c.667 0 1-.333 1-1 0-2.667-3-8-3-8V9h1V8H11v1h1v6s-3 5.333-3 8c0 .667.333 1 1 1z" fill="white" />
+    <path d="M13 9h6v6l2.5 6h-11l2.5-6V9z" stroke="white" strokeWidth="1" fill="none" />
   </svg>
-);
+)
+
+const FilterSection = ({ title, options }: { title: string; options: string[] }) => (
+  <div className="space-y-3">
+    <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+    <div className="space-y-2">
+      {options.map((option) => (
+        <div key={option} className="flex items-center space-x-2">
+          <Checkbox id={option} />
+          <label
+            htmlFor={option}
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            {option}
+          </label>
+        </div>
+      ))}
+    </div>
+  </div>
+)
 
 export default function LabsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredLab, setHoveredLab] = useState<string | null>(null);
-  const [labs, setLabs] = useState<Lab[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [labs, setLabs] = useState<Lab[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchLabs();
-  }, []);
+    fetchLabs()
+  }, [])
 
   const fetchLabs = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('http://localhost:3000/aips/labs', {
-        method: 'GET',
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch("http://localhost:3000/aips/labs", {
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
-        mode: 'cors',
-      });
+        credentials: "include",
+        mode: "cors",
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
-      const data = await response.json();
-      setLabs(data);
-    } catch (error) {
-      console.error('Error fetching labs:', error);
-      setError('Failed to fetch labs. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const filteredLabs = labs.filter(lab =>
-    lab.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lab.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      const data = await response.json()
+      setLabs(data)
+    } catch (error) {
+      console.error("Error fetching labs:", error)
+      setError("Failed to fetch labs. Please try again later.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLabClick = (labId: string) => {
+    router.push(`/dashboard/labs/${labId}`)
+  }
+
+  const filteredLabs = labs.filter(
+    (lab) =>
+      lab.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lab.description.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -109,7 +127,7 @@ export default function LabsPage() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -128,66 +146,88 @@ export default function LabsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100">
-              Filters
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </button>
+            <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100"
+                >
+                  Filters
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                  <div className="flex items-center justify-between">
+                    <DialogTitle>Filters</DialogTitle>
+                    <Button variant="ghost" size="icon" onClick={() => setIsFilterOpen(false)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <DialogDescription>
+                    Filter labs by topic, content type, level, platform, programming language, and tools.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-8 p-4">
+                  <FilterSection title="Topic" options={FILTER_OPTIONS.topics} />
+                  <FilterSection title="Content type" options={FILTER_OPTIONS.contentTypes} />
+                  <FilterSection title="Level" options={FILTER_OPTIONS.levels} />
+                  <FilterSection title="Platform" options={FILTER_OPTIONS.platforms} />
+                  <FilterSection title="Programming" options={FILTER_OPTIONS.programming} />
+                  <FilterSection title="Tool" options={FILTER_OPTIONS.tools} />
+                </div>
+                <div className="flex justify-end gap-4 mt-6">
+                  <Button variant="outline" onClick={() => setIsFilterOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={() => setIsFilterOpen(false)}>Apply Filters</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredLabs.map((lab) => (
-            <motion.div
+            <Card
               key={lab.id}
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              whileHover={{ y: -4 }}
-              onClick={() => router.push(`/labs/${lab.id}`)}
-              className="cursor-pointer"
+              className="overflow-hidden border border-gray-200 hover:border-emerald-500 transition-colors cursor-pointer hover:-translate-y-1 duration-200"
+              onClick={() => handleLabClick(lab.id)}
             >
-              <Card className="overflow-hidden border border-gray-200 hover:border-emerald-500 transition-colors">
-                <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <LabIcon />
+                  <span className="text-xs font-semibold tracking-[3px] text-emerald-600">HANDS-ON LAB</span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-lg font-semibold text-gray-900 line-clamp-2">{lab.title}</h2>
+                  <p className="text-sm text-gray-600 line-clamp-2">{lab.description}</p>
+                </div>
+
+                <div className="pt-4 flex items-center justify-between border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <LabIcon />
-                    <span className="text-xs font-semibold tracking-[3px] text-emerald-600">
-                      HANDS-ON LAB
+                    <span className="text-sm font-medium text-gray-900">
+                      {lab.difficulty.charAt(0) + lab.difficulty.slice(1).toLowerCase()}
                     </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h2 className="text-lg font-semibold text-gray-900 line-clamp-2">
-                      {lab.title}
-                    </h2>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {lab.description}
-                    </p>
-                  </div>
-
-                  <div className="pt-4 flex items-center justify-between border-t border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">
-                        {lab.difficulty.charAt(0) + lab.difficulty.slice(1).toLowerCase()}
-                      </span>
-                      <span className="text-gray-300">|</span>
-                      <div className="flex items-center gap-1 text-gray-500">
-                        <Clock className="h-4 w-4" />
-                        <span className="text-sm">Up to {lab.duration}m</span>
-                      </div>
+                    <span className="text-gray-300">|</span>
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <Clock className="h-4 w-4" />
+                      <span className="text-sm">Up to {lab.duration}m</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">{lab.objectives.length} Lab steps</span>
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">{lab.objectives.length} Lab steps</span>
                   </div>
                 </div>
-              </Card>
-            </motion.div>
+              </div>
+            </Card>
           ))}
         </div>
       </div>
     </div>
-  );
+  )
 }
+
