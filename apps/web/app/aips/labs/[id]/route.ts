@@ -5,35 +5,7 @@ import path from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../api/auth.config";
 
-// export async function GET() {
-//   try {
-//     const labs = await db.lab.findMany({
-//       where: {
-//         published: true,
-//       },
-//       include: {
-//         author: {
-//           select: {
-//             id: true,
-//             name: true,
-//             image: true,
-//           },
-//         },
-//       },
-//       orderBy: {
-//         createdAt: 'desc',
-//       },
-//     });
 
-//     return NextResponse.json(labs);
-//   } catch (error) {
-//     console.error('Error fetching labs:', error);
-//     return NextResponse.json(
-//       { error: 'Failed to fetch labs' },
-//       { status: 500 }
-//     );
-//   }
-// }
 
 export async function PUT(
   req: NextRequest,
@@ -185,3 +157,41 @@ export async function DELETE(
   }
 }
 
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const lab = await db.lab.findUnique({
+      where: { id: params.id },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+    })
+
+    if (!lab) {
+      return NextResponse.json({ error: "Lab not found" }, { status: 404 })
+    }
+
+    // Add isOwner flag to the lab
+    const labWithOwnership = {
+      ...lab,
+      isOwner: session.user.role === "ADMIN" && session.user.id === lab.authorId,
+    }
+
+    return NextResponse.json(labWithOwnership)
+  } catch (error) {
+    console.error("Fetch error:", error)
+    return NextResponse.json({ error: "Failed to fetch lab" }, { status: 500 })
+  }
+}
