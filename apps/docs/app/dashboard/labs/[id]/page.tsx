@@ -3,13 +3,13 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
 import { notFound, useRouter } from "next/navigation"
-import { Clock, ChevronRight, PlayCircle, CheckCircle, BarChart } from "lucide-react"
+import { PlayCircle, CheckCircle, BarChart, Clock, Users, Star, ChevronRight, Lock } from "lucide-react"
 import { Button } from "../../../../../web/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../web/ui/Tabs"
 import { Badge } from "../../../../../web/ui/badge"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../../../web/ui/accordion"
-import Link from "next/link"
 import { useSession } from "next-auth/react"
+import Link from "next/link"
+import Image from "next/image"
 
 interface Lab {
   id: string
@@ -17,13 +17,35 @@ interface Lab {
   description: string
   difficulty: string
   duration: number
+  views: number
+  rating: {
+    score: number
+    total: number
+  }
   objectives: string[]
-  audience: string
-  prerequisites: string
-  coveredTopics: string[]
+  prerequisites: string | string[]
+  environment: {
+    before: string
+    after: string
+  }
   author: {
     name: string
+    title: string
     image: string
+    bio: string
+    links: {
+      linkedin?: string
+      twitter?: string
+      github?: string
+    }
+  }
+  steps: {
+    title: string
+    isLocked: boolean
+  }[]
+  labRules: {
+    rules: string[]
+    warning: string
   }
 }
 
@@ -53,7 +75,30 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
 
       if (!response.ok) throw new Error("Failed to fetch lab")
       const data = await response.json()
-      setLab(data)
+
+      console.log("Raw lab data:", JSON.stringify(data, null, 2))
+
+      // Parse the steps from the JSON data
+      let parsedSteps = []
+      if (typeof data.steps === "string") {
+        try {
+          parsedSteps = JSON.parse(data.steps)
+        } catch (error) {
+          console.error("Error parsing steps:", error)
+        }
+      } else if (Array.isArray(data.steps)) {
+        parsedSteps = data.steps
+      }
+
+      console.log("Parsed steps:", parsedSteps)
+
+      const parsedData = {
+        ...data,
+        steps: parsedSteps,
+      }
+
+      console.log("Final parsed lab data:", JSON.stringify(parsedData, null, 2))
+      setLab(parsedData)
     } catch (error) {
       console.error("Error fetching lab:", error)
       notFound()
@@ -75,41 +120,66 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
     )
   }
 
+  const breadcrumbs = [
+    { label: "Training Library", href: "/dashboard/labs" },
+
+    { label: lab.title },
+  ]
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b">
+      <nav className="border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <nav className="flex items-center space-x-2 text-sm">
-            <Link href="/labs" className="text-muted-foreground hover:text-foreground">
-              Training Library
-            </Link>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">{lab.title}</span>
-          </nav>
+          <div className="flex items-center space-x-2 text-sm">
+            {breadcrumbs.map((item, index) => (
+              <React.Fragment key={item.label}>
+                {index > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                {item.href ? (
+                  <Link href={item.href} className="text-muted-foreground hover:text-foreground">
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span className="text-foreground">{item.label}</span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
-      </div>
+      </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            <div>
-              <div className="text-xs font-semibold tracking-[3px] text-emerald-600 mb-4">HANDS-ON LAB</div>
-              <h1 className="text-3xl font-bold text-foreground mb-6">{lab.title}</h1>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="font-medium text-foreground">{lab.difficulty}</span>
-                <span className="text-muted-foreground">|</span>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>Up to {lab.duration}m</span>
-                </div>
-                <span className="text-muted-foreground">|</span>
-                <span className="text-muted-foreground">{lab.objectives?.length || 0} Lab steps</span>
-              </div>
+        <div className="mb-8">
+          <div className="text-xs font-semibold tracking-[3px] text-emerald-600 mb-4">HANDS-ON LAB</div>
+          <h1 className="text-3xl font-bold text-foreground mb-4">{lab.title}</h1>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
+            <span className="font-medium text-foreground">{lab.difficulty}</span>
+            <span>|</span>
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>Up to {lab.duration}m</span>
             </div>
+            <span>|</span>
+            <div className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              <span>{lab.views?.toLocaleString()}</span>
+            </div>
+            <span>|</span>
+            <div className="flex items-center gap-1">
+              <Star className="h-4 w-4 fill-primary text-primary" />
+              <span>
+                {lab.rating?.score}/{lab.rating?.total}
+              </span>
+            </div>
+          </div>
+          <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+            Start lab
+          </Button>
+        </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
             <div className="grid grid-cols-3 gap-6">
-              <div className="p-6 bg-card rounded-lg">
+              <div className="p-6 bg-card rounded-lg border border-border">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-emerald-100 rounded-lg">
                     <PlayCircle className="h-6 w-6 text-emerald-600" />
@@ -122,7 +192,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                   </div>
                 </div>
               </div>
-              <div className="p-6 bg-card rounded-lg">
+              <div className="p-6 bg-card rounded-lg border border-border">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-emerald-100 rounded-lg">
                     <CheckCircle className="h-6 w-6 text-emerald-600" />
@@ -135,7 +205,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                   </div>
                 </div>
               </div>
-              <div className="p-6 bg-card rounded-lg">
+              <div className="p-6 bg-card rounded-lg border border-border">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-emerald-100 rounded-lg">
                     <BarChart className="h-6 w-6 text-emerald-600" />
@@ -151,22 +221,31 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
             </div>
 
             <Tabs defaultValue="about" className="w-full">
-              <TabsList>
-                <TabsTrigger value="about">About</TabsTrigger>
-                <TabsTrigger value="author">Author</TabsTrigger>
+              <TabsList className="border-b w-full justify-start rounded-none h-auto p-0">
+                <TabsTrigger
+                  value="about"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:text-foreground"
+                >
+                  About
+                </TabsTrigger>
+                <TabsTrigger
+                  value="author"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:text-foreground"
+                >
+                  Author
+                </TabsTrigger>
               </TabsList>
-              <TabsContent value="about" className="space-y-8">
+              <TabsContent value="about" className="space-y-8 pt-6">
                 <div>
-                  <h2 className="text-xl font-semibold mb-4">Description</h2>
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Description</h2>
                   <div className="prose prose-gray dark:prose-invert max-w-none">
                     <p>{lab.description}</p>
                   </div>
                 </div>
 
                 <div>
-                  <h2 className="text-xl font-semibold mb-4">Learning objectives</h2>
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Lab Objectives</h2>
                   <div className="prose prose-gray dark:prose-invert max-w-none">
-                    <p>Upon completion of this lab, you will be able to:</p>
                     <ul>
                       {lab.objectives?.map((objective, index) => (
                         <li key={index}>{objective}</li>
@@ -175,91 +254,136 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                   </div>
                 </div>
 
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Intended audience</h2>
-                  <p className="text-muted-foreground">{lab.audience}</p>
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Prerequisites</h2>
-                  <div className="prose prose-gray dark:prose-invert max-w-none">
-                    <p>{lab.prerequisites}</p>
+                {lab.prerequisites && (
+                  <div>
+                    <h2 className="text-xl font-semibold text-foreground mb-4">Lab Prerequisites</h2>
+                    <div className="prose prose-gray dark:prose-invert max-w-none space-y-2">
+                      {Array.isArray(lab.prerequisites) ? (
+                        <ul>
+                          {lab.prerequisites.map((prerequisite, index) => (
+                            <li key={index}>{prerequisite}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>{lab.prerequisites}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Covered topics</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {lab.coveredTopics?.map((topic) => (
-                      <Badge key={topic} variant="secondary">
-                        {topic}
-                      </Badge>
-                    ))}
+                {lab.environment && (
+                  <div>
+                    <h2 className="text-xl font-semibold text-foreground mb-4">Lab Environment</h2>
+                    <div className="space-y-6">
+                      <div>
+                        <p className="italic mb-4">
+                          Before completing the Lab instructions, the environment will look as follows:
+                        </p>
+                        <div className="border rounded-lg p-4 bg-card">
+                          <Image
+                            src={`/uploads/${lab.environment.before}`}
+                            alt="Initial lab environment"
+                            width={800}
+                            height={400}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="italic mb-4">
+                          After completing the Lab instructions, the environment should look similar to:
+                        </p>
+                        <div className="border rounded-lg p-4 bg-card">
+                          <Image
+                            src={`/uploads/${lab.environment.after}`}
+                            alt="Final lab environment"
+                            width={800}
+                            height={400}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </TabsContent>
-              <TabsContent value="author">
-                {lab.author?.name ? (
-                  <div className="flex items-center gap-4">
+              <TabsContent value="author" className="pt-6">
+                {lab.author && (
+                  <div className="flex items-start gap-4">
                     {lab.author.image && (
-                      <img
-                        src={lab.author.image || "/placeholder.svg"}
+                      <Image
+                        src={`/uploads/${lab.author.image}`}
                         alt={lab.author.name}
-                        className="h-12 w-12 rounded-full"
+                        width={64}
+                        height={64}
+                        className="rounded-full"
                       />
                     )}
                     <div>
                       <h3 className="font-medium text-foreground">{lab.author.name}</h3>
+                      <p className="text-sm text-muted-foreground">{lab.author.title}</p>
+                      {lab.author.bio && <p className="mt-4 text-muted-foreground">{lab.author.bio}</p>}
+                      <div className="mt-4 flex gap-4">
+                        {lab.author.links?.linkedin && (
+                          <Link href={lab.author.links.linkedin} className="text-blue-500 hover:underline">
+                            LinkedIn
+                          </Link>
+                        )}
+                        {lab.author.links?.twitter && (
+                          <Link href={lab.author.links.twitter} className="text-blue-500 hover:underline">
+                            Twitter
+                          </Link>
+                        )}
+                        {lab.author.links?.github && (
+                          <Link href={lab.author.links.github} className="text-blue-500 hover:underline">
+                            GitHub
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <p className="text-muted-foreground">No author information available.</p>
                 )}
               </TabsContent>
             </Tabs>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            <Button className="w-full" size="lg">
-              Start lab
-            </Button>
-
-            <div className="border rounded-lg">
-              <div className="p-4 border-b">
+            <div className="border border-border rounded-lg">
+              <div className="p-4 border-b border-border">
                 <h2 className="font-semibold text-foreground">Lab steps</h2>
               </div>
-              <div className="p-4">
-                <Accordion type="single" collapsible className="space-y-4">
-                  {lab.objectives?.map((objective, index) => (
-                    <AccordionItem key={index} value={`step-${index + 1}`}>
-                      <AccordionTrigger className="text-sm hover:no-underline">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full border text-xs">
-                            {index + 1}
-                          </div>
-                          <span className="font-medium">{objective}</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="pl-9 pt-2">
-                          <p className="text-sm text-muted-foreground">
-                            Complete this step to progress through the lab.
-                          </p>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+              <div className="divide-y divide-border">
+                {lab.steps && Array.isArray(lab.steps) && lab.steps.length > 0 ? (
+                  lab.steps.map((step, index) => (
+                    <div key={index} className="p-4 flex items-center gap-3">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-xs">
+                        {step.isLocked ? <Lock className="h-4 w-4" /> : index + 1}
+                      </div>
+                      <span className="text-sm text-muted-foreground">{step.title}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-sm text-muted-foreground">No steps available for this lab.</div>
+                )}
               </div>
             </div>
 
-            <div className="border rounded-lg">
-              <div className="p-4 border-b">
+            <div className="border border-border rounded-lg">
+              <div className="p-4 border-b border-border">
                 <h2 className="font-semibold text-foreground">Lab rules apply</h2>
               </div>
               <div className="p-4">
-                <p className="text-sm text-muted-foreground">This lab follows standard lab rules and guidelines.</p>
+                <ul className="list-disc pl-4 space-y-2 text-sm text-muted-foreground">
+                  <li>Stay within resource usage requirements.</li>
+                  <li>Do not engage in or encourage activity that is illegal.</li>
+                  <li>Do not engage in cryptocurrency mining.</li>
+                </ul>
+                <p className="text-sm text-muted-foreground mt-4">
+                  Breaking the rules will result in suspension or a ban from the labs product.
+                </p>
+                <Link href="#" className="text-sm text-blue-500 hover:underline block mt-4">
+                  Read general Terms of Service
+                </Link>
               </div>
             </div>
           </div>

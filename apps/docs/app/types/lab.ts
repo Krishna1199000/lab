@@ -1,21 +1,36 @@
-export type Difficulty = "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
-
 export interface Lab {
   id: string
   title: string
-  difficulty: Difficulty
-  duration: number
+  difficulty: "Beginner" | "Intermediate" | "Advanced"
+  duration: string
+  rating: {
+    score: number
+    total: number
+    count: number
+  }
+  averageCompletionTime: number
   description: string
   objectives: string[]
-  audience: string
-  prerequisites: string
-  coveredTopics: string[]
-  published: boolean
-  author: {
-    name: string | null
-    image: string | null
+  prerequisites: {
+    description: string
+    items: string[]
   }
-  createdAt: string
-  updatedAt: string
+  environment: {
+    before: string
+    after: string
+  }
+  updates: Array<{
+    date: string
+    description: string
+  }>
+  coveredTopics: string[]
+  labSteps: Array<{
+    title: string
+    isLocked: boolean
+  }>
+  labRules: {
+    rules: string[]
+    warning: string
+  }
 }
 
