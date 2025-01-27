@@ -70,35 +70,27 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
           "Content-Type": "application/json",
         },
         credentials: "include",
-        mode: "cors",
       })
 
       if (!response.ok) throw new Error("Failed to fetch lab")
       const data = await response.json()
 
-      console.log("Raw lab data:", JSON.stringify(data, null, 2))
-
-      // Parse the steps from the JSON data
+      // Extract steps from the nested structure
       let parsedSteps = []
-      if (typeof data.steps === "string") {
-        try {
-          parsedSteps = JSON.parse(data.steps)
-        } catch (error) {
-          console.error("Error parsing steps:", error)
-        }
-      } else if (Array.isArray(data.steps)) {
-        parsedSteps = data.steps
+      if (data.steps && data.steps.setup && Array.isArray(data.steps.setup)) {
+        // Map the setup array to the correct format
+        parsedSteps = data.steps.setup.map((step: string, index: number) => ({
+          title: step,
+          isLocked: false // You can modify this based on your requirements
+        }))
       }
 
-      console.log("Parsed steps:", parsedSteps)
-
-      const parsedData = {
+      const labData = {
         ...data,
-        steps: parsedSteps,
+        steps: parsedSteps
       }
 
-      console.log("Final parsed lab data:", JSON.stringify(parsedData, null, 2))
-      setLab(parsedData)
+      setLab(labData)
     } catch (error) {
       console.error("Error fetching lab:", error)
       notFound()
@@ -122,7 +114,6 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
 
   const breadcrumbs = [
     { label: "Training Library", href: "/dashboard/labs" },
-
     { label: lab.title },
   ]
 
@@ -221,16 +212,16 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
             </div>
 
             <Tabs defaultValue="about" className="w-full">
-              <TabsList className="border-b w-full justify-start rounded-none h-auto p-0">
+              <TabsList className="border-b w-full justify-start rounded-none h-auto p-0 space-x-8">
                 <TabsTrigger
                   value="about"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:text-foreground"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:text-foreground px-0"
                 >
                   About
                 </TabsTrigger>
                 <TabsTrigger
                   value="author"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:text-foreground"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:text-foreground px-0"
                 >
                   Author
                 </TabsTrigger>
@@ -312,12 +303,12 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                   <div className="flex items-start gap-4">
                     {lab.author.image && (
                       <Image
-                        src={`/uploads/${lab.author.image}`}
-                        alt={lab.author.name}
-                        width={64}
-                        height={64}
-                        className="rounded-full"
-                      />
+                      src={`/uploads/${lab.author.image}`}
+                      alt={lab.author.name}
+                      width={64}
+                      height={64}
+                      className="rounded-full"
+                    />
                     )}
                     <div>
                       <h3 className="font-medium text-foreground">{lab.author.name}</h3>
@@ -353,7 +344,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                 <h2 className="font-semibold text-foreground">Lab steps</h2>
               </div>
               <div className="divide-y divide-border">
-                {lab.steps && Array.isArray(lab.steps) && lab.steps.length > 0 ? (
+                {lab.steps && lab.steps.length > 0 ? (
                   lab.steps.map((step, index) => (
                     <div key={index} className="p-4 flex items-center gap-3">
                       <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-xs">
@@ -392,4 +383,3 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
     </div>
   )
 }
-
