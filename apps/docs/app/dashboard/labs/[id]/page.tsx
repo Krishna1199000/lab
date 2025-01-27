@@ -1,5 +1,4 @@
-"use client"
-
+'use client'
 import * as React from "react"
 import { useEffect, useState } from "react"
 import { notFound, useRouter } from "next/navigation"
@@ -47,6 +46,8 @@ interface Lab {
     rules: string[]
     warning: string
   }
+  coveredTopics: string[]
+  audience: string
 }
 
 export default function LabPage({ params }: { params: Promise<{ id: string }> }) {
@@ -81,13 +82,13 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
         // Map the setup array to the correct format
         parsedSteps = data.steps.setup.map((step: string, index: number) => ({
           title: step,
-          isLocked: false // You can modify this based on your requirements
+          isLocked: false, // You can modify this based on your requirements
         }))
       }
 
       const labData = {
         ...data,
-        steps: parsedSteps
+        steps: parsedSteps,
       }
 
       setLab(labData)
@@ -112,10 +113,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
     )
   }
 
-  const breadcrumbs = [
-    { label: "Training Library", href: "/dashboard/labs" },
-    { label: lab.title },
-  ]
+  const breadcrumbs = [{ label: "Training Library", href: "/dashboard/labs" }, { label: lab.title }]
 
   return (
     <div className="min-h-screen bg-background">
@@ -262,6 +260,24 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                   </div>
                 )}
 
+<div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Covered Topics</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {lab.coveredTopics.map((topic, index) => (
+                      <Badge key={index} variant="secondary">
+                        {topic}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Intended Audience</h2>
+                  <div className="prose prose-gray dark:prose-invert max-w-none">
+                    <div dangerouslySetInnerHTML={{ __html: lab.audience }} />
+                  </div>
+                </div>
+
                 {lab.environment && (
                   <div>
                     <h2 className="text-xl font-semibold text-foreground mb-4">Lab Environment</h2>
@@ -303,12 +319,12 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                   <div className="flex items-start gap-4">
                     {lab.author.image && (
                       <Image
-                      src={`/uploads/${lab.author.image}`}
-                      alt={lab.author.name}
-                      width={64}
-                      height={64}
-                      className="rounded-full"
-                    />
+                        src={`/uploads/${lab.author.image}`}
+                        alt={lab.author.name}
+                        width={64}
+                        height={64}
+                        className="rounded-full"
+                      />
                     )}
                     <div>
                       <h3 className="font-medium text-foreground">{lab.author.name}</h3>
@@ -383,3 +399,4 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
     </div>
   )
 }
+
