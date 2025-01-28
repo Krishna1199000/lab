@@ -9,7 +9,7 @@ import { Textarea } from "../../../ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../ui/card"
 import { Label } from "../../../ui/label"
-import { ArrowLeft, Upload, ImageIcon } from "lucide-react"
+import { ArrowLeft, Upload, ImageIcon } from 'lucide-react'
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 
@@ -169,8 +169,9 @@ export default function CreateLab() {
       toast.success("Lab created successfully!")
       router.push("/dashboard")
     } catch (error: any) {
-      console.error("Detailed error:", error)
-      toast.error(error.message || "Failed to create lab. Please try again.")
+      console.error('Detailed error:', error);
+      console.error('Error stack:', error.stack);
+      toast.error(error.message || "Failed to create lab. Please try again.");
     } finally {
       setIsSubmitting(false)
     }
@@ -423,4 +424,3 @@ export default function CreateLab() {
     </motion.div>
   )
 }
-

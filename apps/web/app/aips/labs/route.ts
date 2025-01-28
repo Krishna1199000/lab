@@ -1,8 +1,8 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../../api/auth.config"
 import db from "@repo/db/client"
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 const s3Client = new S3Client({
@@ -13,16 +13,8 @@ const s3Client = new S3Client({
   },
 })
 
-async function generateSignedUrl(key: string) {
-  if (!key) return null
-  const command = new GetObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET_NAME!,
-    Key: key,
-  })
-  return await getSignedUrl(s3Client, command, { expiresIn: 3600 })
-}
-
 export async function POST(req: NextRequest) {
+  console.log("API route hit");
   try {
     const session = await getServerSession(authOptions)
 
@@ -88,52 +80,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    const labs = await db.lab.findMany({
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    })
-
-    // Generate signed URLs for all labs' environment images
-    const labsWithSignedUrls = await Promise.all(
-      labs.map(async (lab) => {
-        let environment = lab.environment as any
-        if (environment?.images?.length > 0) {
-          const signedUrls = await Promise.all(
-            environment.images.map((image: string) => generateSignedUrl(image.split(".com/")[1])),
-          )
-          environment = {
-            ...environment,
-            images: signedUrls.filter(Boolean),
-          }
-        }
-        return {
-          ...lab,
-          environment,
-          isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
-        }
-      }),
-    )
-
-    return NextResponse.json(labsWithSignedUrls)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch labs" }, { status: 500 })
-  }
-}
-
 async function uploadToS3(file: File): Promise<string> {
   const filename = `${Date.now()}-${file.name}`
   const bucketName = process.env.AWS_S3_BUCKET_NAME!
@@ -161,3 +107,32 @@ async function uploadToS3(file: File): Promise<string> {
   return `https://${bucketName}.s3.amazonaws.com/${filename}`
 }
 
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    const labs = await db.lab.findMany({
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    })
+
+    const labsWithOwnership = labs.map((lab) => ({
+      ...lab,
+      isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
+    }))
+
+    return NextResponse.json(labsWithOwnership)
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch labs" }, { status: 500 })
+  }
+}
