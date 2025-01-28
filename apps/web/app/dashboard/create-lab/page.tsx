@@ -1,41 +1,41 @@
-"use client";
+"use client"
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Button } from "../../../ui/button";
-import { Input } from "../../../ui/input";
-import { Textarea } from "../../../ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../ui/card";
-import { Label } from "../../../ui/label";
-import { ArrowLeft, Upload, ImageIcon } from "lucide-react";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Button } from "../../../ui/button"
+import { Input } from "../../../ui/input"
+import { Textarea } from "../../../ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../ui/card"
+import { Label } from "../../../ui/label"
+import { ArrowLeft, Upload, ImageIcon } from "lucide-react"
+import { motion } from "framer-motion"
+import { toast } from "sonner"
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 20 }
-};
+  exit: { opacity: 0, y: 20 },
+}
 
 const stagger = {
   animate: {
     transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
+      staggerChildren: 0.1,
+    },
+  },
+}
 
 export default function CreateLab() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentSection, setCurrentSection] = useState(0);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [difficulty, setDifficulty] = useState("BEGINNER");
-  const totalSections = 4;
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentSection, setCurrentSection] = useState(0)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [difficulty, setDifficulty] = useState("BEGINNER")
+  const totalSections = 4
 
   const [formData, setFormData] = useState({
     title: "",
@@ -47,146 +47,134 @@ export default function CreateLab() {
     objectives: "",
     coveredTopics: "",
     environment: "",
-    steps: ""
-  });
+    steps: "",
+  })
 
   const validateCurrentSection = () => {
     switch (currentSection) {
       case 0:
-        return (
-          formData.title.trim() !== "" &&
-          formData.duration.trim() !== "" &&
-          formData.description.trim() !== ""
-        );
+        return formData.title.trim() !== "" && formData.duration.trim() !== "" && formData.description.trim() !== ""
       case 1:
-        return (
-          formData.audience.trim() !== "" &&
-          formData.prerequisites.trim() !== ""
-        );
+        return formData.audience.trim() !== "" && formData.prerequisites.trim() !== ""
       case 2:
-        return formData.coveredTopics.trim() !== "";
+        return formData.coveredTopics.trim() !== ""
       case 3:
-        return formData.steps.trim() !== "";
+        return formData.steps.trim() !== ""
       default:
-        return false;
+        return false
     }
-  };
+  }
 
   const handleNext = () => {
     if (validateCurrentSection()) {
-      setCurrentSection(Math.min(totalSections - 1, currentSection + 1));
+      setCurrentSection(Math.min(totalSections - 1, currentSection + 1))
     } else {
-      toast.error("Please fill in all required fields before proceeding");
+      toast.error("Please fill in all required fields before proceeding")
     }
-  };
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
+    const { name, value } = e.target
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }));
-  };
+      [name]: value,
+    }))
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const file = event.target.files?.[0]
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size must be less than 5MB");
-        return;
+        toast.error("File size must be less than 5MB")
+        return
       }
-      if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-        toast.error("Only JPEG, PNG and GIF files are allowed");
-        return;
+      if (!["image/jpeg", "image/png", "image/gif"].includes(file.type)) {
+        toast.error("Only JPEG, PNG and GIF files are allowed")
+        return
       }
-      setSelectedFile(file);
-      const reader = new FileReader();
+      setSelectedFile(file)
+      const reader = new FileReader()
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
     }
-  };
+  }
 
   const handleDifficultyChange = (value: string) => {
-    setDifficulty(value);
-    setFormData(prev => ({
+    setDifficulty(value)
+    setFormData((prev) => ({
       ...prev,
-      difficulty: value
-    }));
-  };
+      difficulty: value,
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate all required fields before submission
+    e.preventDefault()
+
     const requiredFields = {
       title: formData.title.trim(),
       duration: formData.duration.trim(),
       description: formData.description.trim(),
       audience: formData.audience.trim(),
-      prerequisites: formData.prerequisites.trim()
-    };
+      prerequisites: formData.prerequisites.trim(),
+    }
 
     const emptyFields = Object.entries(requiredFields)
       .filter(([_, value]) => !value)
-      .map(([key]) => key);
+      .map(([key]) => key)
 
     if (emptyFields.length > 0) {
-      toast.error(`Please fill in all required fields: ${emptyFields.join(", ")}`);
-      return;
+      toast.error(`Please fill in all required fields: ${emptyFields.join(", ")}`)
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
 
     try {
-      // Create a new FormData object
-      const formDataObj = new FormData();
+      const formDataObj = new FormData()
 
-      // Add all form fields from the state
-      formDataObj.set("title", formData.title);
-      formDataObj.set("duration", formData.duration);
-      formDataObj.set("description", formData.description);
-      formDataObj.set("audience", formData.audience);
-      formDataObj.set("prerequisites", formData.prerequisites);
-      formDataObj.set("difficulty", difficulty);
-      formDataObj.set("authorId", session?.user?.id || "");
+      formDataObj.set("title", formData.title)
+      formDataObj.set("duration", formData.duration)
+      formDataObj.set("description", formData.description)
+      formDataObj.set("audience", formData.audience)
+      formDataObj.set("prerequisites", formData.prerequisites)
+      formDataObj.set("difficulty", difficulty)
+      formDataObj.set("authorId", session?.user?.id || "")
 
-      // Add the file if selected
       if (selectedFile) {
-        formDataObj.set("environmentImage", selectedFile);
+        formDataObj.set("environmentImage", selectedFile)
       }
 
-      // Process the arrays
-      const objectives = formData.objectives.split("\n").filter(Boolean);
-      const coveredTopics = formData.coveredTopics.split("\n").filter(Boolean);
-      const environmentUrls = formData.environment.split("\n").filter(Boolean);
-      const steps = formData.steps.split("\n").filter(Boolean);
+      const objectives = formData.objectives.split("\n").filter(Boolean)
+      const coveredTopics = formData.coveredTopics.split("\n").filter(Boolean)
+      const environmentUrls = formData.environment.split("\n").filter(Boolean)
+      const steps = formData.steps.split("\n").filter(Boolean)
 
-      formDataObj.set("objectives", JSON.stringify(objectives));
-      formDataObj.set("coveredTopics", JSON.stringify(coveredTopics));
-      formDataObj.set("environment", JSON.stringify({ images: environmentUrls }));
-      formDataObj.set("steps", JSON.stringify({ setup: steps }));
+      formDataObj.set("objectives", JSON.stringify(objectives))
+      formDataObj.set("coveredTopics", JSON.stringify(coveredTopics))
+      formDataObj.set("environment", JSON.stringify({ images: environmentUrls }))
+      formDataObj.set("steps", JSON.stringify({ setup: steps }))
 
       const response = await fetch("/aips/labs", {
         method: "POST",
         body: formDataObj,
-      });
+      })
 
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData.error || 'Failed to create lab');
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to create lab")
       }
 
-      toast.success("Lab created successfully!");
-      router.push('/dashboard');
+      toast.success("Lab created successfully!")
+      router.push("/dashboard")
     } catch (error: any) {
-      console.error('Detailed error:', error);
-      toast.error(error.message || "Failed to create lab. Please try again.");
+      console.error("Detailed error:", error)
+      toast.error(error.message || "Failed to create lab. Please try again.")
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const renderFormSection = () => {
     switch (currentSection) {
@@ -208,11 +196,7 @@ export default function CreateLab() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="difficulty">Difficulty</Label>
-                <Select
-                  name="difficulty"
-                  value={difficulty}
-                  onValueChange={handleDifficultyChange}
-                >
+                <Select name="difficulty" value={difficulty} onValueChange={handleDifficultyChange}>
                   <SelectTrigger id="difficulty">
                     <SelectValue placeholder="Select difficulty" />
                   </SelectTrigger>
@@ -226,11 +210,11 @@ export default function CreateLab() {
 
               <div className="space-y-2">
                 <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input 
-                  type="number" 
-                  id="duration" 
-                  name="duration" 
-                  required 
+                <Input
+                  type="number"
+                  id="duration"
+                  name="duration"
+                  required
                   min="1"
                   value={formData.duration}
                   onChange={handleInputChange}
@@ -240,24 +224,24 @@ export default function CreateLab() {
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea 
-                id="description" 
-                name="description" 
+              <Textarea
+                id="description"
+                name="description"
                 required
                 value={formData.description}
                 onChange={handleInputChange}
               />
             </div>
           </motion.div>
-        );
+        )
       case 1:
         return (
           <motion.div {...fadeIn} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="objectives">Objectives (one per line)</Label>
-              <Textarea 
-                id="objectives" 
-                name="objectives" 
+              <Textarea
+                id="objectives"
+                name="objectives"
                 required
                 value={formData.objectives}
                 onChange={handleInputChange}
@@ -266,27 +250,21 @@ export default function CreateLab() {
 
             <div className="space-y-2">
               <Label htmlFor="audience">Target Audience</Label>
-              <Textarea 
-                id="audience" 
-                name="audience" 
-                required
-                value={formData.audience}
-                onChange={handleInputChange}
-              />
+              <Textarea id="audience" name="audience" required value={formData.audience} onChange={handleInputChange} />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="prerequisites">Prerequisites</Label>
-              <Textarea 
-                id="prerequisites" 
-                name="prerequisites" 
+              <Textarea
+                id="prerequisites"
+                name="prerequisites"
                 required
                 value={formData.prerequisites}
                 onChange={handleInputChange}
               />
             </div>
           </motion.div>
-        );
+        )
       case 2:
         return (
           <motion.div {...fadeIn} className="space-y-6">
@@ -309,7 +287,7 @@ export default function CreateLab() {
                     {imagePreview ? (
                       <div className="relative w-full aspect-video">
                         <img
-                          src={imagePreview}
+                          src={imagePreview || "/placeholder.svg"}
                           alt="Preview"
                           className="rounded-lg object-cover w-full h-full"
                         />
@@ -317,9 +295,7 @@ export default function CreateLab() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8">
                         <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Click to upload image (max 5MB)
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-2">Click to upload image (max 5MB)</p>
                       </div>
                     )}
                   </label>
@@ -340,34 +316,34 @@ export default function CreateLab() {
 
             <div className="space-y-2">
               <Label htmlFor="coveredTopics">Covered Topics (one per line)</Label>
-              <Textarea 
-                id="coveredTopics" 
-                name="coveredTopics" 
+              <Textarea
+                id="coveredTopics"
+                name="coveredTopics"
                 required
                 value={formData.coveredTopics}
                 onChange={handleInputChange}
               />
             </div>
           </motion.div>
-        );
+        )
       case 3:
         return (
           <motion.div {...fadeIn} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="steps">Steps (one per line)</Label>
-              <Textarea 
-                id="steps" 
-                name="steps" 
-                required 
+              <Textarea
+                id="steps"
+                name="steps"
+                required
                 className="min-h-[200px]"
                 value={formData.steps}
                 onChange={handleInputChange}
               />
             </div>
           </motion.div>
-        );
+        )
     }
-  };
+  }
 
   return (
     <motion.div
@@ -379,11 +355,7 @@ export default function CreateLab() {
     >
       <div className="max-w-4xl mx-auto">
         <motion.div {...fadeIn}>
-          <Button
-            variant="ghost"
-            onClick={() => router.back()}
-            className="mb-6 hover:bg-secondary/50"
-          >
+          <Button variant="ghost" onClick={() => router.back()} className="mb-6 hover:bg-secondary/50">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Button>
@@ -420,15 +392,12 @@ export default function CreateLab() {
                   </Button>
 
                   {currentSection === totalSections - 1 ? (
-                    <Button 
-                      type="submit" 
-                      disabled={isSubmitting || !validateCurrentSection()}
-                    >
+                    <Button type="submit" disabled={isSubmitting || !validateCurrentSection()}>
                       {isSubmitting ? (
                         <div className="flex items-center gap-2">
                           <motion.div
                             animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
                             className="h-4 w-4 border-2 border-white rounded-full border-t-transparent"
                           />
                           Creating Lab...
@@ -441,10 +410,7 @@ export default function CreateLab() {
                       )}
                     </Button>
                   ) : (
-                    <Button
-                      type="button"
-                      onClick={handleNext}
-                    >
+                    <Button type="button" onClick={handleNext}>
                       Next
                     </Button>
                   )}
@@ -455,5 +421,6 @@ export default function CreateLab() {
         </motion.div>
       </div>
     </motion.div>
-  );
+  )
 }
+
