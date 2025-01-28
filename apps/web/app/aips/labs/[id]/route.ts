@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import db from "@repo/db/client"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../../../api/auth.config"
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 const s3Client = new S3Client({
@@ -12,6 +12,15 @@ const s3Client = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
 })
+
+async function generateSignedUrl(key: string) {
+  if (!key) return null
+  const command = new GetObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET_NAME!,
+    Key: key,
+  })
+  return await getSignedUrl(s3Client, command, { expiresIn: 3600 })
+}
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -74,7 +83,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const imageUrl = await uploadToS3(environmentImage)
       const existingEnvironment = updateData.environment || { images: [] }
 
-      // Delete old image if it exists
       if (existingEnvironment.images && existingEnvironment.images.length > 0) {
         await deleteFromS3(existingEnvironment.images[0])
       }
@@ -119,7 +127,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: "Forbidden: You can only delete your own labs" }, { status: 403 })
     }
 
-    // Delete the image from S3 if it exists
     if (existingLab.environment && existingLab.environment.images && existingLab.environment.images.length > 0) {
       await deleteFromS3(existingLab.environment.images[0])
     }
@@ -160,9 +167,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: "Lab not found" }, { status: 404 })
     }
 
-    // Add isOwner flag to the lab
+    // Generate signed URLs for environment images
+    let environment = lab.environment as any
+    if (environment?.images?.length > 0) {
+      const signedUrls = await Promise.all(
+        environment.images.map((image: string) => generateSignedUrl(image.split(".com/")[1])),
+      )
+      environment = {
+        ...environment,
+        images: signedUrls.filter(Boolean), // Remove any null values
+      }
+    }
+
+    // Add isOwner flag and include signed URLs
     const labWithOwnership = {
       ...lab,
+      environment,
       isOwner: session.user.role === "ADMIN" && session.user.id === lab.authorId,
     }
 
