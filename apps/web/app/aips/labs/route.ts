@@ -13,75 +13,8 @@ const s3Client = new S3Client({
   },
 })
 
-export async function POST(req: NextRequest) {
-  console.log("API route hit");
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized: You must be logged in to create a lab" }, { status: 401 })
-    }
-
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Only administrators can create labs" }, { status: 403 })
-    }
-
-    const formData = await req.formData()
-
-    const requiredFields = ["title", "duration", "description", "audience", "prerequisites"]
-    const missingFields = requiredFields.filter((field) => !formData.get(field))
-
-    if (missingFields.length > 0) {
-      return NextResponse.json({ error: `Missing required fields: ${missingFields.join(", ")}` }, { status: 400 })
-    }
-
-    const environmentImage = formData.get("environmentImage") as File | null
-    let imagePath = null
-
-    if (environmentImage) {
-      imagePath = await uploadToS3(environmentImage)
-    }
-
-    const objectives = JSON.parse((formData.get("objectives") as string) || "[]")
-    const coveredTopics = JSON.parse((formData.get("coveredTopics") as string) || "[]")
-    const environment = JSON.parse((formData.get("environment") as string) || "{}")
-    const steps = JSON.parse((formData.get("steps") as string) || "{}")
-
-    if (imagePath) {
-      environment.images = [imagePath, ...(environment.images || [])]
-    }
-
-    const lab = await db.lab.create({
-      data: {
-        title: formData.get("title") as string,
-        difficulty: ((formData.get("difficulty") as string) || "BEGINNER") as "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
-        duration: Number.parseInt(formData.get("duration") as string),
-        description: formData.get("description") as string,
-        objectives,
-        audience: formData.get("audience") as string,
-        prerequisites: formData.get("prerequisites") as string,
-        environment,
-        coveredTopics,
-        steps,
-        authorId: session.user.id,
-        published: false,
-      },
-    })
-
-    return NextResponse.json({ success: true, data: lab }, { status: 201 })
-  } catch (error: any) {
-    console.error("Server error:", error)
-
-    if (error.code === "P2002") {
-      return NextResponse.json({ error: "A lab with this title already exists" }, { status: 400 })
-    }
-
-    return NextResponse.json({ error: error.message || "Failed to create lab" }, { status: 500 })
-  }
-}
-
-async function uploadToS3(file: File): Promise<string> {
-  const filename = `${Date.now()}-${file.name}`
+async function uploadToS3(file: File, prefix: string): Promise<string> {
+  const filename = `${prefix}-${Date.now()}-${file.name}`
   const bucketName = process.env.AWS_S3_BUCKET_NAME!
 
   const command = new PutObjectCommand({
@@ -105,6 +38,107 @@ async function uploadToS3(file: File): Promise<string> {
   }
 
   return `https://${bucketName}.s3.amazonaws.com/${filename}`
+}
+
+export async function POST(req: NextRequest) {
+  console.log("API route hit")
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: You must be logged in to create a lab" },
+        { status: 401 }
+      )
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Forbidden: Only administrators can create labs" },
+        { status: 403 }
+      )
+    }
+
+    const formData = await req.formData()
+
+    const requiredFields = [
+      "title",
+      "duration",
+      "description",
+      "audience",
+      "prerequisites",
+    ]
+    const missingFields = requiredFields.filter((field) => !formData.get(field))
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Missing required fields: ${missingFields.join(", ")}` },
+        { status: 400 }
+      )
+    }
+
+    const environmentImageBefore = formData.get("environmentImageBefore") as File | null
+    const environmentImageAfter = formData.get("environmentImageAfter") as File | null
+    let beforeImagePath = null
+    let afterImagePath = null
+
+    if (environmentImageBefore) {
+      beforeImagePath = await uploadToS3(environmentImageBefore, 'before')
+    }
+
+    if (environmentImageAfter) {
+      afterImagePath = await uploadToS3(environmentImageAfter, 'after')
+    }
+
+    const objectives = JSON.parse((formData.get("objectives") as string) || "[]")
+    const coveredTopics = JSON.parse(
+      (formData.get("coveredTopics") as string) || "[]"
+    )
+    const environment = JSON.parse((formData.get("environment") as string) || "{}")
+    const steps = JSON.parse((formData.get("steps") as string) || "{}")
+
+    if (beforeImagePath) {
+      environment.images = [beforeImagePath, ...(environment.images || [])]
+    }
+
+    const lab = await db.lab.create({
+      data: {
+        title: formData.get("title") as string,
+        difficulty: (formData.get("difficulty") as string || "BEGINNER") as
+          | "BEGINNER"
+          | "INTERMEDIATE"
+          | "ADVANCED",
+        duration: Number.parseInt(formData.get("duration") as string),
+        description: formData.get("description") as string,
+        objectives,
+        audience: formData.get("audience") as string,
+        prerequisites: formData.get("prerequisites") as string,
+        environment,
+        coveredTopics,
+        steps,
+        authorId: session.user.id,
+        published: false,
+        environmentImageBefore: beforeImagePath,
+        environmentImageAfter: afterImagePath,
+      },
+    })
+
+    return NextResponse.json({ success: true, data: lab }, { status: 201 })
+  } catch (error: any) {
+    console.error("Server error:", error)
+
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { error: "A lab with this title already exists" },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(
+      { error: error.message || "Failed to create lab" },
+      { status: 500 }
+    )
+  }
 }
 
 export async function GET(req: NextRequest) {

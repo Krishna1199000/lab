@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -19,7 +20,8 @@ const fadeIn = {
   exit: { opacity: 0, y: 20 },
 }
 
-export default function EditLab({ params }: { params: { id: string } }) {
+export default function EditLab({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params)
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
@@ -44,7 +46,7 @@ export default function EditLab({ params }: { params: { id: string } }) {
   useEffect(() => {
     const fetchLab = async () => {
       try {
-        const response = await fetch(`/api/labs/${params.id}`)
+        const response = await fetch(`/api/labs/${id}`)
         if (!response.ok) throw new Error("Failed to fetch lab")
         const lab = await response.json()
 
@@ -76,7 +78,7 @@ export default function EditLab({ params }: { params: { id: string } }) {
     if (session?.user?.id) {
       fetchLab()
     }
-  }, [params.id, session?.user?.id, router])
+  }, [id, session?.user?.id, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -142,7 +144,7 @@ export default function EditLab({ params }: { params: { id: string } }) {
       formDataObj.set("environment", JSON.stringify({ images: environmentUrls }))
       formDataObj.set("steps", JSON.stringify({ setup: steps }))
 
-      const response = await fetch(`/aips/labs/${params.id}`, {
+      const response = await fetch(`/api/labs/${id}`, {
         method: "PUT",
         body: formDataObj,
       })

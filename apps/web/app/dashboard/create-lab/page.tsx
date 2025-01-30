@@ -1,5 +1,4 @@
 "use client"
-
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -32,8 +31,10 @@ export default function CreateLab() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentSection, setCurrentSection] = useState(0)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [selectedBeforeFile, setSelectedBeforeFile] = useState<File | null>(null)
+  const [selectedAfterFile, setSelectedAfterFile] = useState<File | null>(null)
+  const [beforeImagePreview, setBeforeImagePreview] = useState<string | null>(null)
+  const [afterImagePreview, setAfterImagePreview] = useState<string | null>(null)
   const [difficulty, setDifficulty] = useState("BEGINNER")
   const totalSections = 4
 
@@ -81,7 +82,7 @@ export default function CreateLab() {
     }))
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'before' | 'after') => {
     const file = event.target.files?.[0]
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -92,12 +93,22 @@ export default function CreateLab() {
         toast.error("Only JPEG, PNG and GIF files are allowed")
         return
       }
-      setSelectedFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
+
+      if (type === 'before') {
+        setSelectedBeforeFile(file)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setBeforeImagePreview(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        setSelectedAfterFile(file)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setAfterImagePreview(reader.result as string)
+        }
+        reader.readAsDataURL(file)
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -142,8 +153,12 @@ export default function CreateLab() {
       formDataObj.set("difficulty", difficulty)
       formDataObj.set("authorId", session?.user?.id || "")
 
-      if (selectedFile) {
-        formDataObj.set("environmentImage", selectedFile)
+      if (selectedBeforeFile) {
+        formDataObj.set("environmentImageBefore", selectedBeforeFile)
+      }
+
+      if (selectedAfterFile) {
+        formDataObj.set("environmentImageAfter", selectedAfterFile)
       }
 
       const objectives = formData.objectives.split("\n").filter(Boolean)
@@ -169,9 +184,9 @@ export default function CreateLab() {
       toast.success("Lab created successfully!")
       router.push("/dashboard")
     } catch (error: any) {
-      console.error('Detailed error:', error);
-      console.error('Error stack:', error.stack);
-      toast.error(error.message || "Failed to create lab. Please try again.");
+      console.error('Detailed error:', error)
+      console.error('Error stack:', error.stack)
+      toast.error(error.message || "Failed to create lab. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -270,36 +285,74 @@ export default function CreateLab() {
         return (
           <motion.div {...fadeIn} className="space-y-6">
             <div className="space-y-4">
-              <Label>Environment Image</Label>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
-                  <input
-                    type="file"
-                    id="environmentImage"
-                    name="environmentImage"
-                    accept="image/jpeg,image/png,image/gif"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="environmentImage"
-                    className="flex flex-col items-center justify-center gap-2 cursor-pointer"
-                  >
-                    {imagePreview ? (
-                      <div className="relative w-full aspect-video">
-                        <img
-                          src={imagePreview || "/placeholder.svg"}
-                          alt="Preview"
-                          className="rounded-lg object-cover w-full h-full"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-8">
-                        <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground mt-2">Click to upload image (max 5MB)</p>
-                      </div>
-                    )}
-                  </label>
+              <Label>Environment Images</Label>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Before Image Upload */}
+                <div className="space-y-2">
+                  <Label>Before Image</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
+                    <input
+                      type="file"
+                      id="environmentImageBefore"
+                      name="environmentImageBefore"
+                      accept="image/jpeg,image/png,image/gif"
+                      onChange={(e) => handleFileChange(e, 'before')}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="environmentImageBefore"
+                      className="flex flex-col items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {beforeImagePreview ? (
+                        <div className="relative w-full aspect-video">
+                          <img
+                            src={beforeImagePreview}
+                            alt="Before Preview"
+                            className="rounded-lg object-cover w-full h-full"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
+                          <p className="text-sm text-muted-foreground mt-2">Upload Before Image</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                {/* After Image Upload */}
+                <div className="space-y-2">
+                  <Label>After Image</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
+                    <input
+                      type="file"
+                      id="environmentImageAfter"
+                      name="environmentImageAfter"
+                      accept="image/jpeg,image/png,image/gif"
+                      onChange={(e) => handleFileChange(e, 'after')}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="environmentImageAfter"
+                      className="flex flex-col items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {afterImagePreview ? (
+                        <div className="relative w-full aspect-video">
+                          <img
+                            src={afterImagePreview}
+                            alt="After Preview"
+                            className="rounded-lg object-cover w-full h-full"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
+                          <p className="text-sm text-muted-foreground mt-2">Upload After Image</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
