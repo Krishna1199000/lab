@@ -80,7 +80,7 @@ export default function LabsPage() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-        },
+        },        
         credentials: "include",
         mode: "cors",
       })

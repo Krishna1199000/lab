@@ -1,154 +1,62 @@
-const express = require('express');
-const router = express.Router();
-const db = require('@repo/db/client')
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs/promises');
+import "dotenv/config"
+import express from "express"
+import cors from "cors"
+import helmet from "helmet"
+import session from "express-session"
+import { labRoutes } from "./routes/labs.js"
+import { authMiddleware } from "./middleware/auth.js"
 
+const app = express()
 
-// Configure multer for file uploads
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+// CORS configuration
+app.use(
+  cors({
+    origin: ["http://localhost:3001", "http://localhost:3000"], // Allow both ports
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+  }),
+)
 
-// Middleware to check authentication
-const authenticateUser = async (req, res, next) => {
-  // Replace this with your actual authentication logic
-  if (!req.session?.user?.id) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  next();
-};
+// Basic middleware
+app.use(helmet())
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
-// Middleware to check admin role
-const isAdmin = async (req, res, next) => {
-  if (req.session.user.role !== "ADMIN") {
-    return res.status(403).json({ error: "Forbidden: Only administrators can perform this action" });
-  }
-  next();
-};
+// Session configuration
+app.use(
+  session({
+    secret: process.env.NEXTAUTH_SECRET || "default-secret-key", // Use NextAuth secret
+    resave: false,
+    saveUninitialized: false,
+    name: "next-auth.session-token", // Match NextAuth cookie name
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: "/",
+      domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : "localhost",
+    },
+  }),
+)
 
-// GET /api/labs - Get all published labs
-router.get('/', async (req, res) => {
-  try {
-    const labs = await db.lab.findMany({
-      where: {
-        published: true,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+// Routes
+app.use("/api/labs", authMiddleware, labRoutes)
 
-    res.json(labs);
-  } catch (error) {
-    console.error('Error fetching labs:', error);
-    res.status(500).json({ error: 'Failed to fetch labs' });
-  }
-});
+const PORT = process.env.PORT || 8080
 
-// PUT /api/labs/:id - Update a lab
-router.put('/:id', authenticateUser, isAdmin, upload.single('environmentImage'), async (req, res) => {
-  try {
-    const { id } = req.params;
+app.listen(PORT, () => {
+  console.log(`🚀 API Server running on port ${PORT}`)
+})
 
-    // Check if the lab exists and belongs to the current admin
-    const existingLab = await db.lab.findUnique({
-      where: { id }
-    });
+// Error handling
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error)
+  process.exit(1)
+})
 
-    if (!existingLab) {
-      return res.status(404).json({ error: "Lab not found" });
-    }
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason)
+})
 
-    // Check if the current admin is the author
-    if (existingLab.authorId !== req.session.user.id) {
-      return res.status(403).json({ error: "Forbidden: You can only edit your own labs" });
-    }
-
-    const updateData = {};
-    const fields = [
-      "title", "description", "difficulty", "duration",
-      "objectives", "audience", "prerequisites",
-      "environment", "coveredTopics", "steps", "published"
-    ];
-
-    // Process form data
-    fields.forEach(field => {
-      if (field in req.body) {
-        if (field === "duration") {
-          updateData[field] = parseInt(req.body[field]);
-        } else if (["objectives", "coveredTopics", "environment", "steps"].includes(field)) {
-          updateData[field] = JSON.parse(req.body[field]);
-        } else if (field === "published") {
-          updateData[field] = req.body[field] === "true";
-        } else {
-          updateData[field] = req.body[field];
-        }
-      }
-    });
-
-    // Handle file upload if present
-    if (req.file) {
-      const filename = `${Date.now()}-${req.file.originalname}`;
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-      const filepath = path.join(uploadDir, filename);
-
-      await fs.writeFile(filepath, req.file.buffer);
-
-      const imageUrl = `/uploads/${filename}`;
-      const existingEnvironment = updateData.environment || { images: [] };
-      existingEnvironment.images = [imageUrl, ...existingEnvironment.images];
-      updateData.environment = existingEnvironment;
-    }
-
-    const lab = await db.lab.update({
-      where: { id },
-      data: updateData,
-    });
-
-    res.json(lab);
-  } catch (error) {
-    console.error('Update error:', error);
-    res.status(500).json({ error: "Failed to update lab" });
-  }
-});
-
-// DELETE /api/labs/:id - Delete a lab
-router.delete('/:id', authenticateUser, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Check if the lab exists and belongs to the current admin
-    const existingLab = await db.lab.findUnique({
-      where: { id }
-    });
-
-    if (!existingLab) {
-      return res.status(404).json({ error: "Lab not found" });
-    }
-
-    // Check if the current admin is the author
-    if (existingLab.authorId !== req.session.user.id) {
-      return res.status(403).json({ error: "Forbidden: You can only delete your own labs" });
-    }
-    
-    await db.lab.delete({
-      where: { id },
-    });
-
-    res.json({ message: "Lab deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to delete lab" });
-  }
-});
-
-module.exports = router;

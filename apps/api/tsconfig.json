@@ -1,18 +1,31 @@
 {
-    "extends": "@repo/typescript-config/base.json",
     "compilerOptions": {
-      "lib": [
-        "ES2015",
-        "ES2021.String"
-      ],
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "target": "ES2022",
+      "lib": ["ES2022"],
       "module": "NodeNext",
-      "outDir": "./dist"
+      "moduleResolution": "NodeNext",
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["./src/*"]
+      },
+      "types": ["node"],
+      "resolveJsonModule": true,
+      "allowJs": true,
+      "checkJs": false,
+      "sourceMap": true,
+      "declaration": true,
+      "declarationMap": true,
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true,
+      "forceConsistentCasingInFileNames": true,
+      "isolatedModules": true,
+      "skipLibCheck": true,
+      "strict": true
     },
-    "exclude": [
-      "node_modules"
-    ],
-    "include": [
-      "."
-    ]
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
   }
+  
   
