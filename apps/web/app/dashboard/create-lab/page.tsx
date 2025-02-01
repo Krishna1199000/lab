@@ -151,7 +151,7 @@ export default function CreateLab() {
       formDataObj.set("audience", formData.audience)
       formDataObj.set("prerequisites", formData.prerequisites)
       formDataObj.set("difficulty", difficulty)
-      formDataObj.set("authorId", session?.user?.id || "")
+      formDataObj.set("authorId", (session?.user as { id: string }).id || "")
 
       if (selectedBeforeFile) {
         formDataObj.set("environmentImageBefore", selectedBeforeFile)

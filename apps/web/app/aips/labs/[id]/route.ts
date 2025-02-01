@@ -175,10 +175,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Generate signed URLs for environment images
-    const environmentImageBefore = lab.environmentImageBefore ? 
-      await generateSignedUrl(lab.environmentImageBefore.split(".com/")[1]) : null;
-    const environmentImageAfter = lab.environmentImageAfter ? 
-      await generateSignedUrl(lab.environmentImageAfter.split(".com/")[1]) : null;
+    const environmentImageBefore = lab.environmentImageBefore
+      ? await generateSignedUrl(lab.environmentImageBefore.split(".com/")[1] || "")
+      : null;
+    const environmentImageAfter = lab.environmentImageAfter
+      ? await generateSignedUrl(lab.environmentImageAfter.split(".com/")[1] || "")
+      : null;
 
     // Add isOwner flag and include signed URLs
     const labWithOwnership = {

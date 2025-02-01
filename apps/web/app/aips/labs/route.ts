@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
         audience: formData.get("audience") as string,
         prerequisites: formData.get("prerequisites") as string,
         coveredTopics,
-        steps: steps as Json,
+        steps: steps as any,
         authorId: session.user.id,
         published: false,
         environmentImageBefore: beforeImagePath,

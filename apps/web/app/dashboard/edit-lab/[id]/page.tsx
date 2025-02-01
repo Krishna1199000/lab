@@ -75,10 +75,10 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
       }
     }
 
-    if (session?.user?.id) {
+    if ((session?.user as { id: string })?.id) {
       fetchLab()
     }
-  }, [id, session?.user?.id, router])
+  }, [id, session?.user, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -144,7 +144,7 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
       formDataObj.set("environment", JSON.stringify({ images: environmentUrls }))
       formDataObj.set("steps", JSON.stringify({ setup: steps }))
 
-      const response = await fetch(`/api/labs/${id}`, {
+      const response = await fetch(`/aips/labs/${id}`, {
         method: "PUT",
         body: formDataObj,
       })
