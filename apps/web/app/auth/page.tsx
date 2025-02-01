@@ -12,7 +12,7 @@ const Signin = () => {
     if (redirected.current === false && session.data?.user) {
       const redirectUrl = localStorage.getItem("loginRedirectUrl");
       localStorage.removeItem("loginRedirectUrl");
-      router.replace(redirectUrl || "/dashboard");
+      router.replace(redirectUrl || "/Profile");
       redirected.current = true;
     }
   }, [redirected, session, router]);

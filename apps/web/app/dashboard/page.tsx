@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "../../ui/button"
 import { ThemeToggle } from "../components/theme.toggle"
+import { ProfileDialog } from "../components/profile-dialog"
 import { LogOut, LayoutDashboard, Plus, Beaker, Pencil, Trash2, Clock } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../../ui/card"
 import { toast } from "sonner"
@@ -29,6 +30,7 @@ interface Lab {
     email: string | null
   }
 }
+
 declare module "next-auth" {
   interface Session {
     user?: {
@@ -114,7 +116,6 @@ export default function Dashboard() {
     return null
   }
 
-  // Separate labs into owned and other labs
   const ownedLabs = labs.filter((lab) => lab.isOwner)
   const otherLabs = labs.filter((lab) => !lab.isOwner)
 
@@ -146,6 +147,7 @@ export default function Dashboard() {
                   </motion.span>
                 )}
               </motion.div>
+              <ProfileDialog session={session} />
               <ThemeToggle />
               <motion.div variants={fadeIn}>
                 <Button
@@ -368,4 +370,3 @@ export default function Dashboard() {
     </motion.div>
   )
 }
-
