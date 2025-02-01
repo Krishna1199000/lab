@@ -14,53 +14,58 @@ const s3Client = new S3Client({
 })
 
 async function uploadToS3(file: File, prefix: string): Promise<string> {
-  const filename = `${prefix}-${Date.now()}-${file.name}`
-  const bucketName = process.env.AWS_S3_BUCKET_NAME!
+  try {
+    const filename = `${prefix}-${Date.now()}-${file.name}`
+    const bucketName = process.env.AWS_S3_BUCKET_NAME!
 
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: filename,
-    ContentType: file.type,
-  })
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: filename,
+      ContentType: file.type,
+    })
 
-  const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 })
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 })
 
-  const response = await fetch(signedUrl, {
-    method: "PUT",
-    body: await file.arrayBuffer(),
-    headers: {
-      "Content-Type": file.type,
-    },
-  })
+    const response = await fetch(signedUrl, {
+      method: "PUT",
+      body: await file.arrayBuffer(),
+      headers: {
+        "Content-Type": file.type,
+      },
+    })
 
-  if (!response.ok) {
+    if (!response.ok) {
+      throw new Error("Failed to upload file to S3")
+    }
+
+    return `https://${bucketName}.s3.amazonaws.com/${filename}`
+  } catch (error) {
+    console.error("S3 upload error:", error)
     throw new Error("Failed to upload file to S3")
   }
-
-  return `https://${bucketName}.s3.amazonaws.com/${filename}`
 }
 
 export async function POST(req: NextRequest) {
-  console.log("API route hit")
   try {
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized: You must be logged in to create a lab" },
-        { status: 401 }
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized: You must be logged in to create a lab" }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
     if (session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Forbidden: Only administrators can create labs" },
-        { status: 403 }
+      return new NextResponse(
+        JSON.stringify({ error: "Forbidden: Only administrators can create labs" }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
     const formData = await req.formData()
 
+    // Validate required fields
     const requiredFields = [
       "title",
       "duration",
@@ -68,39 +73,69 @@ export async function POST(req: NextRequest) {
       "audience",
       "prerequisites",
     ]
-    const missingFields = requiredFields.filter((field) => !formData.get(field))
+    
+    const missingFields = requiredFields.filter((field) => {
+      const value = formData.get(field)
+      return value === null || value === undefined || value === ""
+    })
 
     if (missingFields.length > 0) {
-      return NextResponse.json(
-        { error: `Missing required fields: ${missingFields.join(", ")}` },
-        { status: 400 }
+      return new NextResponse(
+        JSON.stringify({ error: `Missing required fields: ${missingFields.join(", ")}` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
+    // Handle image uploads
     const environmentImageBefore = formData.get("environmentImageBefore") as File | null
     const environmentImageAfter = formData.get("environmentImageAfter") as File | null
     let beforeImagePath = null
     let afterImagePath = null
 
-    if (environmentImageBefore) {
-      beforeImagePath = await uploadToS3(environmentImageBefore, 'before')
+    try {
+      if (environmentImageBefore) {
+        beforeImagePath = await uploadToS3(environmentImageBefore, 'before')
+      }
+
+      if (environmentImageAfter) {
+        afterImagePath = await uploadToS3(environmentImageAfter, 'after')
+      }
+    } catch (error) {
+      return new NextResponse(
+        JSON.stringify({ error: "Failed to upload images" }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
-    if (environmentImageAfter) {
-      afterImagePath = await uploadToS3(environmentImageAfter, 'after')
+    // Parse JSON fields with error handling
+    let objectives = []
+    let coveredTopics = []
+    let steps = {}
+
+    try {
+      const objectivesStr = formData.get("objectives")
+      const coveredTopicsStr = formData.get("coveredTopics")
+      const stepsStr = formData.get("steps")
+
+      objectives = objectivesStr ? JSON.parse(objectivesStr as string) : []
+      coveredTopics = coveredTopicsStr ? JSON.parse(coveredTopicsStr as string) : []
+      steps = stepsStr ? JSON.parse(stepsStr as string) : {}
+    } catch (error) {
+      return new NextResponse(
+        JSON.stringify({ error: "Invalid JSON data provided in form fields" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
-    const objectives = JSON.parse((formData.get("objectives") as string) || "[]")
-    const coveredTopics = JSON.parse(
-      (formData.get("coveredTopics") as string) || "[]"
-    )
-    const environment = JSON.parse((formData.get("environment") as string) || "{}")
-    const steps = JSON.parse((formData.get("steps") as string) || "{}")
-
-    if (beforeImagePath) {
-      environment.images = [beforeImagePath, ...(environment.images || [])]
+    const duration = parseInt(formData.get("duration") as string, 10)
+    if (isNaN(duration)) {
+      return new NextResponse(
+        JSON.stringify({ error: "Invalid duration value" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
+    // Create lab with validated data
     const lab = await db.lab.create({
       data: {
         title: formData.get("title") as string,
@@ -108,14 +143,13 @@ export async function POST(req: NextRequest) {
           | "BEGINNER"
           | "INTERMEDIATE"
           | "ADVANCED",
-        duration: Number.parseInt(formData.get("duration") as string),
+        duration,
         description: formData.get("description") as string,
         objectives,
         audience: formData.get("audience") as string,
         prerequisites: formData.get("prerequisites") as string,
-        environment,
         coveredTopics,
-        steps,
+        steps: steps as Json,
         authorId: session.user.id,
         published: false,
         environmentImageBefore: beforeImagePath,
@@ -123,24 +157,26 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json({ success: true, data: lab }, { status: 201 })
+    return new NextResponse(
+      JSON.stringify({ success: true, data: lab }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } }
+    )
   } catch (error: any) {
-    console.error("Server error:", error)
-
+    // Handle specific error cases
     if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "A lab with this title already exists" },
-        { status: 400 }
+      return new NextResponse(
+        JSON.stringify({ error: "A lab with this title already exists" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    return NextResponse.json(
-      { error: error.message || "Failed to create lab" },
-      { status: 500 }
+    // Handle all other errors
+    return new NextResponse(
+      JSON.stringify({ error: error.message || "Failed to create lab" }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
-
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -165,8 +201,14 @@ export async function GET(req: NextRequest) {
       isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
     }))
 
-    return NextResponse.json(labsWithOwnership)
+    return new NextResponse(
+      JSON.stringify(labsWithOwnership),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch labs" }, { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ error: "Failed to fetch labs" }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 }

@@ -78,17 +78,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     })
 
-    const environmentImage = formData.get("environmentImage") as File
-    if (environmentImage) {
-      const imageUrl = await uploadToS3(environmentImage)
-      const existingEnvironment = updateData.environment || { images: [] }
+    const environmentImageBefore = formData.get("environmentImageBefore") as File
+    const environmentImageAfter = formData.get("environmentImageAfter") as File
 
-      if (existingEnvironment.images && existingEnvironment.images.length > 0) {
-        await deleteFromS3(existingEnvironment.images[0])
-      }
+    if (environmentImageBefore) {
+      const imageUrl = await uploadToS3(environmentImageBefore)
+      updateData.environmentImageBefore = imageUrl
+    }
 
-      existingEnvironment.images = [imageUrl, ...existingEnvironment.images.slice(1)]
-      updateData.environment = existingEnvironment
+    if (environmentImageAfter) {
+      const imageUrl = await uploadToS3(environmentImageAfter)
+      updateData.environmentImageAfter = imageUrl
     }
 
     const lab = await db.lab.update({
@@ -127,8 +127,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: "Forbidden: You can only delete your own labs" }, { status: 403 })
     }
 
-    if (existingLab.environment && existingLab.environment.images && existingLab.environment.images.length > 0) {
-      await deleteFromS3(existingLab.environment.images[0])
+    // Delete both environment images if they exist
+    if (existingLab.environmentImageBefore) {
+      await deleteFromS3(existingLab.environmentImageBefore)
+    }
+
+    if (existingLab.environmentImageAfter) {
+      await deleteFromS3(existingLab.environmentImageAfter)
     }
 
     await db.lab.delete({
@@ -137,9 +142,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     return NextResponse.json({ message: "Lab deleted successfully" }, { status: 200 })
   } catch (error) {
+    console.error("Delete error:", error)
     return NextResponse.json({ error: "Failed to delete lab" }, { status: 500 })
   }
 }
+
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -168,21 +175,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Generate signed URLs for environment images
-    let environment = lab.environment as any
-    if (environment?.images?.length > 0) {
-      const signedUrls = await Promise.all(
-        environment.images.map((image: string) => generateSignedUrl(image.split(".com/")[1])),
-      )
-      environment = {
-        ...environment,
-        images: signedUrls.filter(Boolean), // Remove any null values
-      }
-    }
+    const environmentImageBefore = lab.environmentImageBefore ? 
+      await generateSignedUrl(lab.environmentImageBefore.split(".com/")[1]) : null;
+    const environmentImageAfter = lab.environmentImageAfter ? 
+      await generateSignedUrl(lab.environmentImageAfter.split(".com/")[1]) : null;
 
     // Add isOwner flag and include signed URLs
     const labWithOwnership = {
       ...lab,
-      environment,
+      environmentImageBefore,
+      environmentImageAfter,
       isOwner: session.user.role === "ADMIN" && session.user.id === lab.authorId,
     }
 

@@ -331,43 +331,48 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                     </div>
                   </div>
 
-                  {lab.environment && (
+                  {lab.environmentImageBefore || lab.environmentImageAfter ? (
+  <div>
+    <h2 className="text-xl font-semibold text-foreground mb-4">Lab Environment</h2>
+    <div className="space-y-6">
+      {lab.environmentImageBefore && (
         <div>
-          <h2 className="text-xl font-semibold text-foreground mb-4">Lab Environment</h2>
-          <div className="space-y-6">
-            <div>
-              <p className="italic mb-4">
-                Before completing the Lab instructions, the environment will look as follows:
-              </p>
-              <div className="border rounded-lg p-4 bg-card">
-                <Image
-                  src={lab.environment.images?.[0] || "/images/placeholder.svg"}
-                  alt="Initial lab environment"
-                  width={800}
-                  height={400}
-                  className="w-full"
-                  unoptimized
-                />
-              </div>
-            </div>
-            <div>
-              <p className="italic mb-4">
-                After completing the Lab instructions, the environment should look similar to:
-              </p>
-              <div className="border rounded-lg p-4 bg-card">
-                <Image
-                  src={lab.environment.images?.[1] || "/images/placeholder.svg"}
-                  alt="Final lab environment"
-                  width={800}
-                  height={400}
-                  className="w-full"
-                  unoptimized
-                />
-              </div>
-            </div>
+          <p className="italic mb-4">
+            Before completing the Lab instructions, the environment will look as follows:
+          </p>
+          <div className="border rounded-lg p-4 bg-card">
+            <Image
+              src={lab.environmentImageBefore}
+              alt="Initial lab environment"
+              width={800}
+              height={400}
+              className="w-full"
+              unoptimized
+            />
           </div>
         </div>
       )}
+      {lab.environmentImageAfter && (
+        <div>
+          <p className="italic mb-4">
+            After completing the Lab instructions, the environment should look similar to:
+          </p>
+          <div className="border rounded-lg p-4 bg-card">
+            <Image
+              src={lab.environmentImageAfter}
+              alt="Final lab environment"
+              width={800}
+              height={400}
+              className="w-full"
+              unoptimized
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+) : null}
+
                 </TabsContent>
                 <TabsContent value="author" className="pt-6">
                   {lab.author && (
