@@ -32,6 +32,7 @@ model Profile {
   github      String?
   twitter     String?
   linkedin    String?
+  image       String?  // Added image field
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String   @unique
   createdAt   DateTime @default(now())

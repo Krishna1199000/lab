@@ -1,9 +1,22 @@
 "use client"
-
 import * as React from "react"
 import { useEffect, useState, use } from "react"
 import { notFound, useRouter } from "next/navigation"
-import { PlayCircle, CheckCircle, BarChart, Clock, Users, Star, ChevronRight, Lock } from "lucide-react"
+import {
+  PlayCircle,
+  CheckCircle,
+  BarChart,
+  Clock,
+  Users,
+  Star,
+  ChevronRight,
+  Lock,
+  Github,
+  Linkedin,
+  Twitter,
+  MapPin,
+  Building2,
+} from "lucide-react"
 import { Button } from "../../../../../web/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../web/ui/Tabs"
 import { Badge } from "../../../../../web/ui/badge"
@@ -13,6 +26,22 @@ import Image from "next/image"
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import ErrorBoundary from "../../../../../web/ui/error-boundary"
+
+interface Profile {
+  id: string
+  bio: string
+  role: string
+  company: string
+  location: string
+  github: string
+  twitter: string
+  linkedin: string
+  user: {
+    name: string
+    email: string
+    image: string
+  }
+}
 
 interface Lab {
   id: string
@@ -76,6 +105,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
   const [lab, setLab] = useState<Lab | null>(null)
   const [loading, setLoading] = useState(true)
   const [imageUrls, setImageUrls] = useState<{ [key: string]: string }>({})
+  const [authorProfile, setAuthorProfile] = useState<Profile | null>(null)
   const router = useRouter()
   const { status } = useSession()
 
@@ -92,6 +122,30 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
       fetchImageUrls()
     }
   }, [lab])
+
+  useEffect(() => {
+    if (lab?.author) {
+      fetchAuthorProfile()
+    }
+  }, [lab?.author])
+
+  const fetchAuthorProfile = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/aips/profile", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      })
+
+      if (!response.ok) throw new Error("Failed to fetch author profile")
+      const data = await response.json()
+      setAuthorProfile(data)
+    } catch (error) {
+      console.error("Error fetching author profile:", error)
+    }
+  }
 
   const fetchLab = async () => {
     console.log("Fetching lab data...")
@@ -332,80 +386,171 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                   </div>
 
                   {lab.environmentImageBefore || lab.environmentImageAfter ? (
-  <div>
-    <h2 className="text-xl font-semibold text-foreground mb-4">Lab Environment</h2>
-    <div className="space-y-6">
-      {lab.environmentImageBefore && (
-        <div>
-          <p className="italic mb-4">
-            Before completing the Lab instructions, the environment will look as follows:
-          </p>
-          <div className="border rounded-lg p-4 bg-card">
-            <Image
-              src={lab.environmentImageBefore}
-              alt="Initial lab environment"
-              width={800}
-              height={400}
-              className="w-full"
-              unoptimized
-            />
-          </div>
-        </div>
-      )}
-      {lab.environmentImageAfter && (
-        <div>
-          <p className="italic mb-4">
-            After completing the Lab instructions, the environment should look similar to:
-          </p>
-          <div className="border rounded-lg p-4 bg-card">
-            <Image
-              src={lab.environmentImageAfter}
-              alt="Final lab environment"
-              width={800}
-              height={400}
-              className="w-full"
-              unoptimized
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  </div>
-) : null}
-
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground mb-4">Lab Environment</h2>
+                      <div className="space-y-6">
+                        {lab.environmentImageBefore && (
+                          <div>
+                            <p className="italic mb-4">
+                              Before completing the Lab instructions, the environment will look as follows:
+                            </p>
+                            <div className="border rounded-lg p-4 bg-card">
+                              <Image
+                                src={lab.environmentImageBefore || "/placeholder.svg"}
+                                alt="Initial lab environment"
+                                width={800}
+                                height={400}
+                                className="w-full"
+                                unoptimized
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {lab.environmentImageAfter && (
+                          <div>
+                            <p className="italic mb-4">
+                              After completing the Lab instructions, the environment should look similar to:
+                            </p>
+                            <div className="border rounded-lg p-4 bg-card">
+                              <Image
+                                src={lab.environmentImageAfter || "/placeholder.svg"}
+                                alt="Final lab environment"
+                                width={800}
+                                height={400}
+                                className="w-full"
+                                unoptimized
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                 </TabsContent>
                 <TabsContent value="author" className="pt-6">
-                  {lab.author && (
-                    <div className="flex items-start gap-4">
-                      {lab.author.image && (
-                        <Image
-                          src={imageUrls.author || "/placeholder.svg"}
-                          alt={lab.author.name}
-                          width={64}
-                          height={64}
-                          className="rounded-full"
-                        />
-                      )}
-                      <div>
-                        <h3 className="font-medium text-foreground">{lab.author.name}</h3>
-                        <p className="text-sm text-muted-foreground">{lab.author.title}</p>
-                        {lab.author.bio && <p className="mt-4 text-muted-foreground">{lab.author.bio}</p>}
-                        <div className="mt-4 flex gap-4">
-                          {lab.author.links?.linkedin && (
-                            <Link href={lab.author.links.linkedin} className="text-blue-500 hover:underline">
-                              LinkedIn
-                            </Link>
+                  {lab?.author && (
+                    <div className="bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
+                      {/* Cover Image - Gradient Background */}
+                      <div className="h-32 bg-gradient-to-r from-blue-900 to-indigo-900"></div>
+
+                      <div className="relative px-6 pb-8">
+                        {/* Author Avatar */}
+                        <div className="relative -mt-16 mb-4">
+                          <Image
+                            src={imageUrls.author || "/placeholder.svg"}
+                            alt={lab.author.name}
+                            width={128}
+                            height={128}
+                            className="w-32 h-32 rounded-full border-4 border-gray-800 shadow-lg object-cover"
+                            unoptimized
+                          />
+                        </div>
+
+                        {/* Author Info */}
+                        <div className="space-y-6">
+                          {/* Name and Title */}
+                          <div>
+                            <h3 className="text-2xl font-bold text-white">{lab.author.name}</h3>
+                            <p className="text-lg text-gray-400">{lab.author.title}</p>
+                          </div>
+
+                          {/* Location and Company */}
+                          {authorProfile && (
+                            <div className="flex flex-wrap gap-6 text-gray-400">
+                              {authorProfile.location && (
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-5 h-5" />
+                                  <span>{authorProfile.location}</span>
+                                </div>
+                              )}
+                              {authorProfile.company && (
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="w-5 h-5" />
+                                  <span>{authorProfile.company}</span>
+                                </div>
+                              )}
+                            </div>
                           )}
-                          {lab.author.links?.twitter && (
-                            <Link href={lab.author.links.twitter} className="text-blue-500 hover:underline">
-                              Twitter
-                            </Link>
+
+                          {/* Bio */}
+                          {authorProfile?.bio && (
+                            <div className="prose prose-invert max-w-none">
+                              <p className="text-gray-300 leading-relaxed">{authorProfile.bio}</p>
+                            </div>
                           )}
-                          {lab.author.links?.github && (
-                            <Link href={lab.author.links.github} className="text-blue-500 hover:underline">
-                              GitHub
-                            </Link>
-                          )}
+
+                          {/* Social Links */}
+                          <div className="flex flex-wrap gap-4">
+                            {authorProfile?.linkedin && (
+                              <a
+                                href={authorProfile.linkedin}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center px-4 py-2 bg-gray-800 text-blue-400 rounded-lg hover:bg-gray-700 transition-colors"
+                              >
+                                <Linkedin className="w-5 h-5 mr-2" />
+                                LinkedIn
+                              </a>
+                            )}
+                            {authorProfile?.twitter && (
+                              <a
+                                href={authorProfile.twitter}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center px-4 py-2 bg-gray-800 text-blue-400 rounded-lg hover:bg-gray-700 transition-colors"
+                              >
+                                <Twitter className="w-5 h-5 mr-2" />
+                                Twitter
+                              </a>
+                            )}
+                            {authorProfile?.github && (
+                              <a
+                                href={authorProfile.github}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center px-4 py-2 bg-gray-800 text-blue-400 rounded-lg hover:bg-gray-700 transition-colors"
+                              >
+                                <Github className="w-5 h-5 mr-2" />
+                                GitHub
+                              </a>
+                            )}
+                          </div>
+
+                          {/* Stats */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                            <div className="bg-gray-800 p-4 rounded-lg">
+                              <div className="text-4xl font-bold text-blue-400 mb-2">
+                                {lab.views?.toLocaleString() || 0}
+                              </div>
+                              <div className="text-sm text-gray-400">Total Lab Views</div>
+                            </div>
+                            <div className="bg-gray-800 p-4 rounded-lg">
+                              <div className="text-4xl font-bold text-blue-400 mb-2">
+                                {lab.rating?.score || 0}/{lab.rating?.total || 5}
+                              </div>
+                              <div className="text-sm text-gray-400">Average Rating</div>
+                            </div>
+                            <div className="bg-gray-800 p-4 rounded-lg">
+                              <div className="text-4xl font-bold text-blue-400 mb-2">{lab.objectives?.length || 0}</div>
+                              <div className="text-sm text-gray-400">Learning Objectives</div>
+                            </div>
+                          </div>
+
+                          {/* Topics of Expertise */}
+                          <div className="mt-8">
+                            <h4 className="text-lg font-semibold text-white mb-4">Topics of Expertise</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {lab.coveredTopics.map((topic, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="secondary"
+                                  className="bg-gray-700 text-gray-200 hover:bg-gray-600"
+                                >
+                                  {topic}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

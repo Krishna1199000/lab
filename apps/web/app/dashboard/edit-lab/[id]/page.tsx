@@ -58,7 +58,7 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
   useEffect(() => {
     const fetchLab = async () => {
       try {
-        const response = await fetch(`/api/labs/${id}`)
+        const response = await fetch(`/aips/labs/${id}`)
         if (!response.ok) throw new Error("Failed to fetch lab")
         const lab = await response.json()
 

@@ -1,13 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    async rewrites() {
-      return [
-        {
-          source: '/api/:path*',
-          destination: '/api/:path*',
-        },
-      ];
-    },
-  }
-  
-  export default  nextConfig
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "project-demo-thing.s3.amazonaws.com",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
+}
+
+export default nextConfig
+
