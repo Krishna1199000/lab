@@ -56,7 +56,7 @@ function Profile() {
       })
 
       console.log("Sending request to /aips/profile")
-      const response = await fetch(`/aips/profile/${id}`, {
+      const response = await fetch("/aips/profile", {
         method: "POST",
         body: formData,
       })
@@ -198,4 +198,3 @@ function Profile() {
 }
 
 export default Profile
-
