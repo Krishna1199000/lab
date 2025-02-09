@@ -16,6 +16,7 @@ import {
   Twitter,
   MapPin,
   Building2,
+  Camera,
 } from "lucide-react"
 import { Button } from "../../../../../web/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../web/ui/Tabs"
@@ -23,8 +24,6 @@ import { Badge } from "../../../../../web/ui/badge"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3"
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import ErrorBoundary from "../../../../../web/ui/error-boundary"
 
 interface Profile {
@@ -61,6 +60,7 @@ interface Lab {
     after: string
   }
   author: {
+    id: string
     name: string
     title: string
     image: string
@@ -81,30 +81,14 @@ interface Lab {
   }
   coveredTopics: string[]
   audience: string
-}
-
-const s3Client = new S3Client({
-  region: process.env.NEXT_PUBLIC_AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
-  },
-})
-
-async function getS3SignedUrl(key: string) {
-  const command = new GetObjectCommand({
-    Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
-    Key: key,
-  })
-
-  return await getSignedUrl(s3Client, command, { expiresIn: 3600 })
+  environmentImageBefore?: string
+  environmentImageAfter?: string
 }
 
 export default function LabPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const [lab, setLab] = useState<Lab | null>(null)
   const [loading, setLoading] = useState(true)
-  const [imageUrls, setImageUrls] = useState<{ [key: string]: string }>({})
   const [authorProfile, setAuthorProfile] = useState<Profile | null>(null)
   const router = useRouter()
   const { status } = useSession()
@@ -115,13 +99,6 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
       fetchLab()
     }
   }, [resolvedParams.id])
-
-  useEffect(() => {
-    console.log("useEffect triggered with lab:", lab)
-    if (lab) {
-      fetchImageUrls()
-    }
-  }, [lab])
 
   useEffect(() => {
     if (lab?.author) {
@@ -187,33 +164,10 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
     }
   }
 
-  const fetchImageUrls = async () => {
-    if (!lab) return
-
-    const urls: { [key: string]: string } = {}
-
-    if (lab.environment) {
-      if (lab.environment.before) {
-        urls.before = await getS3SignedUrl(lab.environment.before)
-      }
-      if (lab.environment.after) {
-        urls.after = await getS3SignedUrl(lab.environment.after)
-      }
-    }
-
-    if (lab.author && lab.author.image) {
-      urls.author = await getS3SignedUrl(lab.author.image)
-    }
-
-    setImageUrls(urls)
-  }
-
   if (status === "unauthenticated") {
     router.push("/signin")
     return null
   }
-
-  console.log("Rendering LabPage with state:", { lab, loading, imageUrls })
 
   if (loading || !lab) {
     return (
@@ -400,7 +354,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                             </p>
                             <div className="border rounded-lg p-4 bg-card">
                               <Image
-                                src={lab.environmentImageBefore || "/placeholder.svg"}
+                                src={lab.environmentImageBefore}
                                 alt="Initial lab environment"
                                 width={800}
                                 height={400}
@@ -417,7 +371,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                             </p>
                             <div className="border rounded-lg p-4 bg-card">
                               <Image
-                                src={lab.environmentImageAfter || "/placeholder.svg"}
+                                src={lab.environmentImageAfter}
                                 alt="Final lab environment"
                                 width={800}
                                 height={400}
@@ -440,14 +394,23 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                       <div className="relative px-6 pb-8">
                         {/* Author Avatar */}
                         <div className="relative -mt-16 mb-4">
-                          <Image
-                            src={imageUrls.author || "/placeholder.svg"}
-                            alt={lab.author.name}
-                            width={128}
-                            height={128}
-                            className="w-32 h-32 rounded-full border-4 border-gray-800 shadow-lg object-cover"
-                            unoptimized
-                          />
+                          {authorProfile?.user?.image ? (
+                            <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-800 shadow-lg">
+                              <img
+                                src={authorProfile.user.image}
+                                alt={lab.author.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  console.error('Image failed to load:', e)
+                                  e.currentTarget.src = "/placeholder.svg"
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-32 h-32 rounded-full border-4 border-gray-800 shadow-lg bg-gray-700 flex items-center justify-center">
+                              <Camera className="h-8 w-8 text-gray-400" />
+                            </div>
+                          )}
                         </div>
 
                         {/* Author Info */}
@@ -609,4 +572,3 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
     </ErrorBoundary>
   )
 }
-

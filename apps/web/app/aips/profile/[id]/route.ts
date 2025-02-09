@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import db from "@repo/db/client"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../../../api/auth.config"
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 const s3Client = new S3Client({
@@ -14,6 +14,15 @@ const s3Client = new S3Client({
   },
 })
 
+async function generateSignedUrl(key: string) {
+  if (!key) return null
+  const command = new GetObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET_NAME!,
+    Key: key,
+  })
+  return await getSignedUrl(s3Client, command, { expiresIn: 3600 })
+}
+
 async function uploadToS3(file: File): Promise<string> {
   try {
     if (file.size > 5 * 1024 * 1024) {
@@ -22,10 +31,6 @@ async function uploadToS3(file: File): Promise<string> {
 
     const filename = `profile-${Date.now()}-${file.name}`
     const bucketName = process.env.AWS_S3_BUCKET_NAME!
-
-    if (!bucketName) {
-      throw new Error("AWS_S3_BUCKET_NAME is not configured")
-    }
 
     const command = new PutObjectCommand({
       Bucket: bucketName,
@@ -59,6 +64,7 @@ async function deleteFromS3(url: string) {
   try {
     const bucketName = process.env.AWS_S3_BUCKET_NAME!
     const key = url.split(`https://${bucketName}.s3.amazonaws.com/`)[1]
+    if (!key) return
 
     const command = new DeleteObjectCommand({
       Bucket: bucketName,
@@ -68,7 +74,6 @@ async function deleteFromS3(url: string) {
     await s3Client.send(command)
   } catch (error) {
     console.error("Error in deleteFromS3:", error)
-    throw error
   }
 }
 
@@ -83,9 +88,18 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Verify user owns this profile or is admin
     const profile = await db.profile.findUnique({
       where: { userId: params.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
     })
 
     if (!profile || (profile.userId !== session.user.id && session.user.role !== "ADMIN")) {
@@ -99,28 +113,35 @@ export async function PUT(
     const fields = ["bio", "role", "company", "location", "github", "twitter", "linkedin"]
     fields.forEach((field) => {
       const value = formData.get(field)
-      if (value !== null && value !== "") {
-        updateData[field] = value.toString()
+      if (value !== null) {
+        updateData[field] = value === "" ? null : value.toString()
       }
     })
 
     // Handle profile image
     const image = formData.get("image") as File | null
-    if (image) {
-      // Delete old image from S3 if it exists
-      if (profile.image) {
-        await deleteFromS3(profile.image)
+    if (image && image.size > 0) {
+      try {
+        // Delete old image if it exists
+        if (profile.user.image) {
+          await deleteFromS3(profile.user.image)
+        }
+
+        // Upload new image
+        const imageUrl = await uploadToS3(image)
+        
+        // Update user's image
+        await db.user.update({
+          where: { id: profile.user.id },
+          data: { image: imageUrl },
+        })
+
+        // Update profile with new image URL
+        profile.user.image = imageUrl
+      } catch (error) {
+        console.error("Error handling image upload:", error)
+        return NextResponse.json({ error: "Failed to upload image" }, { status: 500 })
       }
-
-      // Upload new image
-      const imageUrl = await uploadToS3(image)
-      updateData.image = imageUrl
-
-      // Update user's image field
-      await db.user.update({
-        where: { id: params.id },
-        data: { image: imageUrl },
-      })
     }
 
     // Update profile
@@ -138,9 +159,30 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(updatedProfile)
+    // Generate signed URLs for the response
+    const userImage = updatedProfile.user.image
+      ? await generateSignedUrl(updatedProfile.user.image.split(".com/")[1] || "")
+      : null
+    const profileImage = updatedProfile.image
+      ? await generateSignedUrl(updatedProfile.image.split(".com/")[1] || "")
+      : null
+
+    const profileWithSignedUrls = {
+      ...updatedProfile,
+      image: profileImage,
+      user: {
+        ...updatedProfile.user,
+        image: userImage
+      }
+    }
+
+    return NextResponse.json(profileWithSignedUrls)
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 })
+    console.error("Profile update error:", error)
+    return NextResponse.json({ 
+      error: "Failed to update profile",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
   }
 }
 
@@ -167,22 +209,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Profile not found" }, { status: 404 })
     }
 
-    // Check if user owns this profile or is admin
     if (profile.userId !== session.user.id && session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Delete profile image from S3 if it exists
     if (profile.image) {
       await deleteFromS3(profile.image)
     }
 
-    // Delete profile
     await db.profile.delete({
       where: { userId: params.id },
     })
 
-    // Update user's image to null
     await db.user.update({
       where: { id: params.id },
       data: { image: null },
@@ -190,9 +228,14 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Profile deleted successfully" })
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 })
+    console.error("Profile deletion error:", error)
+    return NextResponse.json({ 
+      error: "Failed to delete profile",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
   }
 }
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -221,8 +264,26 @@ export async function GET(
       return NextResponse.json({ error: "Profile not found" }, { status: 404 })
     }
 
-    return NextResponse.json(profile)
+    // Generate signed URLs for images
+    const userImage = profile.user.image
+      ? await generateSignedUrl(profile.user.image.split(".com/")[1] || "")
+      : null
+    const profileImage = profile.image
+      ? await generateSignedUrl(profile.image.split(".com/")[1] || "")
+      : null
+
+    const profileWithSignedUrls = {
+      ...profile,
+      image: profileImage,
+      user: {
+        ...profile.user,
+        image: userImage
+      }
+    }
+
+    return NextResponse.json(profileWithSignedUrls)
   } catch (error) {
+    console.error("Profile fetch error:", error)
     return NextResponse.json({ 
       error: "Failed to fetch profile",
       details: error instanceof Error ? error.message : "Unknown error"

@@ -8,7 +8,6 @@ import { User, Mail, Shield, Building2, MapPin, Github, Twitter, Linkedin, Loade
 import { motion } from "framer-motion"
 import type { Session } from "next-auth"
 import { toast } from "sonner"
-import Image from "next/image"
 
 interface Profile {
   bio: string | null
@@ -41,32 +40,24 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
   }, [isOpen, session?.user?.id])
 
   const fetchProfile = async () => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      const response = await fetch("/aips/profile");
+      const response = await fetch(`/aips/profile/${session?.user?.id}`)
       if (!response.ok) {
         if (response.status !== 404) {
-          throw new Error("Failed to fetch profile");
+          throw new Error("Failed to fetch profile")
         }
-        return;
+        return
       }
-      const data = await response.json();
-      
-      // Log the profile data to see what image URL we're getting
-      console.log('Profile data:', {
-        userImage: data.user?.image,
-        profileImage: data.image
-      });
-      
-      setProfile(data);
+      const data = await response.json()
+      setProfile(data)
     } catch (error) {
-      console.error('Profile fetch error:', error);
-      toast.error("Failed to load profile");
+      console.error('Profile fetch error:', error)
+      toast.error("Failed to load profile")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-  
+  }
 
   if (!session?.user) return null
 
@@ -92,36 +83,18 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
               <CardHeader className="pb-4">
                 <div className="flex flex-col items-center space-y-4">
                   <div className="relative">
-                    {session.user.image ? (
+                    {profile?.user?.image ? (
                       <div className="relative h-24 w-24 rounded-full overflow-hidden border-4 border-background">
-                
-
-                        <Image
-                          src={session.user.image || "/placeholder.svg"}
-                          alt={session.user.name || "Profile"}
-                          fill
-                          className="object-cover"
-                          sizes="96px"
+                        <img
+                          src={profile.user.image}
+                          alt={profile.user.name || "Profile"}
+                          className="h-full w-full object-cover"
                           onError={(e) => {
-                            // Log the failed image URL
-                            console.error('Image failed to load:', {
-                              src: e.currentTarget.src,
-                              error: e
-                            });
-
-                            // Set fallback image
-                            e.currentTarget.src = "/placeholder.svg";
-
-                            // Show toast notification
-                            toast.error("Failed to load profile image");
-                          }}
-                          onLoad={(e) => {
-                            // Log successful loads to help debug
-                            console.log('Image loaded successfully:', e.currentTarget.src);
+                            console.error('Image failed to load:', e)
+                            e.currentTarget.src = "/placeholder.svg"
+                            toast.error("Failed to load profile image")
                           }}
                         />
-
-
                       </div>
                     ) : (
                       <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center border-4 border-background">
@@ -129,13 +102,13 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
                       </div>
                     )}
                   </div>
-                  <CardTitle className="text-2xl font-bold text-center">{session.user.name || "User"}</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-center">{profile?.user?.name || session.user.name || "User"}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-primary" />
-                  <span className="text-sm">{session.user.email}</span>
+                  <span className="text-sm">{profile?.user?.email || session.user.email}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-primary" />
@@ -206,4 +179,3 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
     </Dialog>
   )
 }
-
