@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "../../ui/button"
 import { ThemeToggle } from "../components/theme.toggle"
 import { ProfileDialog } from "../components/profile-dialog"
-import { LogOut, LayoutDashboard, Plus, Beaker, Pencil, Trash2, Clock } from "lucide-react"
+import { LogOut, LayoutDashboard, Plus, Beaker, Pencil, Trash2, Clock, UserCog } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../../ui/card"
 import { toast } from "sonner"
 import { getRelativeTime } from "../lib/utils/format-time"
@@ -146,6 +146,17 @@ export default function Dashboard() {
                     (Admin)
                   </motion.span>
                 )}
+              </motion.div>
+              <motion.div variants={fadeIn}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/edit-profile")}
+                  className="flex items-center gap-2"
+                >
+                  <UserCog className="h-4 w-4" />
+                  Edit Profile
+                </Button>
               </motion.div>
               <ProfileDialog session={session} />
               <ThemeToggle />

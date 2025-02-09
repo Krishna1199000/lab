@@ -193,3 +193,39 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 })
   }
 }
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const profile = await db.profile.findUnique({
+      where: { userId: params.id },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+    })
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 })
+    }
+
+    return NextResponse.json(profile)
+  } catch (error) {
+    return NextResponse.json({ 
+      error: "Failed to fetch profile",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
+  }
+}

@@ -41,23 +41,32 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
   }, [isOpen, session?.user?.id])
 
   const fetchProfile = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const response = await fetch("/aips/profile")
+      const response = await fetch("/aips/profile");
       if (!response.ok) {
         if (response.status !== 404) {
-          throw new Error("Failed to fetch profile")
+          throw new Error("Failed to fetch profile");
         }
-        return
+        return;
       }
-      const data = await response.json()
-      setProfile(data)
+      const data = await response.json();
+      
+      // Log the profile data to see what image URL we're getting
+      console.log('Profile data:', {
+        userImage: data.user?.image,
+        profileImage: data.image
+      });
+      
+      setProfile(data);
     } catch (error) {
-      toast.error("Failed to load profile")
+      console.error('Profile fetch error:', error);
+      toast.error("Failed to load profile");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
+  
 
   if (!session?.user) return null
 
@@ -85,13 +94,34 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
                   <div className="relative">
                     {session.user.image ? (
                       <div className="relative h-24 w-24 rounded-full overflow-hidden border-4 border-background">
+                
+
                         <Image
                           src={session.user.image || "/placeholder.svg"}
                           alt={session.user.name || "Profile"}
                           fill
                           className="object-cover"
                           sizes="96px"
+                          onError={(e) => {
+                            // Log the failed image URL
+                            console.error('Image failed to load:', {
+                              src: e.currentTarget.src,
+                              error: e
+                            });
+
+                            // Set fallback image
+                            e.currentTarget.src = "/placeholder.svg";
+
+                            // Show toast notification
+                            toast.error("Failed to load profile image");
+                          }}
+                          onLoad={(e) => {
+                            // Log successful loads to help debug
+                            console.log('Image loaded successfully:', e.currentTarget.src);
+                          }}
                         />
+
+
                       </div>
                     ) : (
                       <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center border-4 border-background">

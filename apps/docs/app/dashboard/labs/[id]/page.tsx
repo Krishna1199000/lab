@@ -131,7 +131,11 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
 
   const fetchAuthorProfile = async () => {
     try {
-      const response = await fetch("http://localhost:3000/aips/profile", {
+      if (!lab?.author?.id) {
+        console.error('Author ID not available')
+        return
+      }
+      const response = await fetch(`http://localhost:3000/aips/profile/${lab.author.id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
