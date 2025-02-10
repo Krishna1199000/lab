@@ -1,7 +1,7 @@
 "use client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "../../../ui/button"
 import { Input } from "../../../ui/input"
 import { Textarea } from "../../../ui/textarea"
@@ -11,6 +11,8 @@ import { Label } from "../../../ui/label"
 import { ArrowLeft, Upload, ImageIcon } from 'lucide-react'
 import { motion } from "framer-motion"
 import { toast } from "sonner"
+import Image from "next/image";
+
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -27,7 +29,7 @@ const stagger = {
 }
 
 export default function CreateLab() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentSection, setCurrentSection] = useState(0)
@@ -132,7 +134,7 @@ export default function CreateLab() {
     }
 
     const emptyFields = Object.entries(requiredFields)
-      .filter(([_, value]) => !value)
+      .filter(([value]) => !value)
       .map(([key]) => key)
 
     if (emptyFields.length > 0) {
@@ -183,12 +185,15 @@ export default function CreateLab() {
 
       toast.success("Lab created successfully!")
       router.push("/dashboard")
-    } catch (error: any) {
-      console.error('Detailed error:', error)
-      console.error('Error stack:', error.stack)
-      toast.error(error.message || "Failed to create lab. Please try again.")
-    } finally {
-      setIsSubmitting(false)
+    }  catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Detailed error:', error.message);
+        console.error('Error stack:', error.stack);
+        toast.error(error.message || "Failed to create lab. Please try again.");
+      } else {
+        console.error('An unknown error occurred:', error);
+        toast.error("An unexpected error occurred.");
+      }
     }
   }
 
@@ -305,10 +310,12 @@ export default function CreateLab() {
                     >
                       {beforeImagePreview ? (
                         <div className="relative w-full aspect-video">
-                          <img
+                          <Image
                             src={beforeImagePreview}
                             alt="Before Preview"
-                            className="rounded-lg object-cover w-full h-full"
+                            layout="fill"
+                            objectFit="cover"
+                            className="rounded-lg"
                           />
                         </div>
                       ) : (
@@ -339,10 +346,12 @@ export default function CreateLab() {
                     >
                       {afterImagePreview ? (
                         <div className="relative w-full aspect-video">
-                          <img
+                          <Image
                             src={afterImagePreview}
                             alt="After Preview"
-                            className="rounded-lg object-cover w-full h-full"
+                            layout="fill"
+                            objectFit="cover"
+                            className="rounded-lg"
                           />
                         </div>
                       ) : (

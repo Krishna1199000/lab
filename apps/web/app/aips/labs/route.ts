@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       if (environmentImageAfter) {
         afterImagePath = await uploadToS3(environmentImageAfter, 'after')
       }
-    } catch (error) {
+    } catch {
       return new NextResponse(
         JSON.stringify({ error: "Failed to upload images" }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -110,7 +110,8 @@ export async function POST(req: NextRequest) {
     // Parse JSON fields with error handling
     let objectives = []
     let coveredTopics = []
-    let steps = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let steps: Record<string, any> = {}   
 
     try {
       const objectivesStr = formData.get("objectives")
@@ -120,12 +121,17 @@ export async function POST(req: NextRequest) {
       objectives = objectivesStr ? JSON.parse(objectivesStr as string) : []
       coveredTopics = coveredTopicsStr ? JSON.parse(coveredTopicsStr as string) : []
       steps = stepsStr ? JSON.parse(stepsStr as string) : {}
-    } catch (error) {
-      return new NextResponse(
-        JSON.stringify({ error: "Invalid JSON data provided in form fields" }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
+    } catch (error: unknown) {
+      console.error(error); 
+  
+      if ((error as { code: string }).code === "P2002") {
+        return new NextResponse(
+          JSON.stringify({ error: "A lab with this title already exists" }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+  }
+  
 
     const duration = parseInt(formData.get("duration") as string, 10)
     if (isNaN(duration)) {
@@ -149,7 +155,7 @@ export async function POST(req: NextRequest) {
         audience: formData.get("audience") as string,
         prerequisites: formData.get("prerequisites") as string,
         coveredTopics,
-        steps: steps as any,
+        steps,
         authorId: session.user.id,
         published: false,
         environmentImageBefore: beforeImagePath,
@@ -161,9 +167,9 @@ export async function POST(req: NextRequest) {
       JSON.stringify({ success: true, data: lab }),
       { status: 201, headers: { 'Content-Type': 'application/json' } }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle specific error cases
-    if (error.code === "P2002") {
+    if ((error as { code: string }).code === "P2002") {
       return new NextResponse(
         JSON.stringify({ error: "A lab with this title already exists" }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -172,12 +178,12 @@ export async function POST(req: NextRequest) {
 
     // Handle all other errors
     return new NextResponse(
-      JSON.stringify({ error: error.message || "Failed to create lab" }),
+      JSON.stringify({ error: (error as { message: string }).message || "Failed to create lab" }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
 
@@ -207,7 +213,7 @@ export async function GET(req: NextRequest) {
     )
   } catch (error) {
     return new NextResponse(
-      JSON.stringify({ error: "Failed to fetch labs" }),
+      JSON.stringify({ error: (error as { message: string }).message || "Failed to fetch labs" }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }

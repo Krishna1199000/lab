@@ -2,7 +2,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import db from "@repo/db/client";
 import type { Adapter } from "next-auth/adapters";
-import { SessionStrategy } from "next-auth";
+import { SessionStrategy, Session } from "next-auth";
 
 export const authOptions = {
   adapter: PrismaAdapter(db) as Adapter,
@@ -19,7 +19,7 @@ export const authOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async signIn({ user, account, profile }: any) {
+    async signIn({ user }: { user: { email: string; name: string; image: string; id?: string; role?: string } }) {
       try {
         const existingUser = await db.user.findUnique({
           where: { email: user.email }
@@ -45,17 +45,17 @@ export const authOptions = {
         return false;
       }
     },
-    async jwt({ token, user, account }: any) {
+    async jwt({ token, user }: { token: Record<string, unknown>; user?: { id: string; role: string } }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }: any) {
+    async session({ session, token }: { session: Session; token: Record<string, unknown> }) {
       if (token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
+        (session.user as { id: string; role: string }).id = token.id as string;
+        (session.user as { id: string; role: string }).role = token.role as string;
       }
       return session;
     },

@@ -61,7 +61,7 @@ export default function Dashboard() {
         if (!response.ok) throw new Error("Failed to fetch labs")
         const data = await response.json()
         setLabs(data)
-      } catch (error) {
+      } catch {
         toast.error("Failed to load labs")
       } finally {
         setIsLoading(false)
@@ -99,8 +99,12 @@ export default function Dashboard() {
 
       setLabs(labs.filter((lab) => lab.id !== id))
       toast.success("Lab deleted successfully")
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete lab")
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message || "Failed to delete lab")
+      } else {
+        toast.error("Failed to delete lab")
+      }
     }
   }
 
@@ -117,7 +121,6 @@ export default function Dashboard() {
   }
 
   const ownedLabs = labs.filter((lab) => lab.isOwner)
-  const otherLabs = labs.filter((lab) => !lab.isOwner)
 
   return (
     <motion.div

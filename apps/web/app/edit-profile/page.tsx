@@ -28,7 +28,7 @@ interface Profile {
 }
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -36,33 +36,31 @@ export default function ProfilePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth")
-    } else if (session?.user?.id) {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch(`/aips/profile/${session?.user?.id}`)
+        if (!response.ok) {
+          if (response.status !== 404) {
+            throw new Error("Failed to fetch profile")
+          }
+          return
+        }
+        const data = await response.json()
+        setProfile(data)
+        if (data.user?.image) {
+          setImagePreview(data.user.image)
+        }
+      } catch {
+        toast.error("Failed to load profile")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (session?.user?.id) {
       fetchProfile()
     }
-  }, [status, session?.user?.id, router])
-
-  const fetchProfile = async () => {
-    try {
-      const response = await fetch(`/aips/profile/${session?.user?.id}`)
-      if (!response.ok) {
-        if (response.status !== 404) {
-          throw new Error("Failed to fetch profile")
-        }
-        return
-      }
-      const data = await response.json()
-      setProfile(data)
-      if (data.user?.image) {
-        setImagePreview(data.user.image)
-      }
-    } catch (error) {
-      toast.error("Failed to load profile")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [session?.user?.id])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -99,7 +97,7 @@ export default function ProfilePage() {
       setProfile(updatedProfile)
       toast.success("Profile updated successfully")
       router.push("/dashboard") // Redirect to dashboard after successful update
-    } catch (error) {
+    } catch {
       toast.error("Failed to update profile")
     } finally {
       setIsSaving(false)

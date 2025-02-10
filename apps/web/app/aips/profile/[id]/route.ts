@@ -107,7 +107,7 @@ export async function PUT(
     }
 
     const formData = await req.formData()
-    const updateData: Record<string, any> = {}
+    const updateData: { [key: string]: string | null } = {}
 
     // Handle text fields
     const fields = ["bio", "role", "company", "location", "github", "twitter", "linkedin"]

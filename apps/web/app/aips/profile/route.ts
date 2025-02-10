@@ -70,16 +70,28 @@ export async function POST(req: NextRequest) {
     }
 
     const formData = await req.formData()
-    const profileData: Record<string, any> = {
+    interface ProfileData {
+      userId: string;
+      bio?: string;
+      role?: string;
+      company?: string;
+      location?: string;
+      github?: string;
+      twitter?: string;
+      linkedin?: string;
+      image?: string;
+    }
+
+    const profileData: ProfileData = {
       userId: session.user.id,
     }
 
     // Handle text fields
-    const fields = ["bio", "role", "company", "location", "github", "twitter", "linkedin"]
+    const fields: (keyof ProfileData)[] = ["bio", "role", "company", "location", "github", "twitter", "linkedin"]
     fields.forEach((field) => {
       const value = formData.get(field)
       if (value !== null && value !== "") {
-        profileData[field] = value.toString()
+        profileData[field] = value.toString() as string
       }
     })
 
@@ -172,7 +184,7 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
 

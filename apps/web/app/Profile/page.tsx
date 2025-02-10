@@ -3,6 +3,7 @@ import type React from "react"
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Github, Twitter, Linkedin, Upload, Camera, AlertCircle } from "lucide-react"
+import Image from 'next/image'
 
 function Profile() {
   const [profile, setProfile] = useState({
@@ -16,7 +17,7 @@ function Profile() {
     imagePreview: "",
   })
 
-  const [isLoading, setIsLoading] = useState(false)
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -129,10 +130,12 @@ function Profile() {
         <div className="relative w-32 h-32 mx-auto">
           <div className={`w-full h-full rounded-full overflow-hidden border-2 ${fieldErrors.image ? 'border-red-500' : 'border-gray-200'}`}>
             {profile.imagePreview ? (
-              <img
+              <Image
                 src={profile.imagePreview}
                 alt="Profile preview"
-                className="w-full h-full object-cover"
+                layout="fill"
+                objectFit="cover"
+                className="w-full h-full"
               />
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center">

@@ -5,6 +5,12 @@ import { authOptions } from "../../../api/auth.config"
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
+type Context = {
+  params: {
+    id: string;
+  };
+};
+
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -22,7 +28,10 @@ async function generateSignedUrl(key: string) {
   return await getSignedUrl(s3Client, command, { expiresIn: 3600 })
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  context: Context
+) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -35,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const existingLab = await db.lab.findUnique({
-      where: { id: params.id },
+      where: { id: context.params.id },
     })
 
     if (!existingLab) {
@@ -46,8 +55,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: "Forbidden: You can only edit your own labs" }, { status: 403 })
     }
 
-    const formData = await req.formData()
-    const updateData: any = {}
+    const formData = await request.formData()
+    const updateData: Record<string, unknown> = {};
 
     const fields = [
       "title",
@@ -92,7 +101,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const lab = await db.lab.update({
-      where: { id: params.id },
+      where: { id: context.params.id },
       data: updateData,
     })
 
@@ -103,7 +112,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: Context
+) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -116,7 +128,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     const existingLab = await db.lab.findUnique({
-      where: { id: params.id },
+      where: { id: context.params.id },
     })
 
     if (!existingLab) {
@@ -127,7 +139,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: "Forbidden: You can only delete your own labs" }, { status: 403 })
     }
 
-    // Delete both environment images if they exist
     if (existingLab.environmentImageBefore) {
       await deleteFromS3(existingLab.environmentImageBefore)
     }
@@ -137,7 +148,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     await db.lab.delete({
-      where: { id: params.id },
+      where: { id: context.params.id },
     })
 
     return NextResponse.json({ message: "Lab deleted successfully" }, { status: 200 })
@@ -147,8 +158,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 }
 
-
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: Context
+) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -157,7 +170,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const lab = await db.lab.findUnique({
-      where: { id: params.id },
+      where: { id: context.params.id },
       include: {
         author: {
           select: {
@@ -174,7 +187,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: "Lab not found" }, { status: 404 })
     }
 
-    // Generate signed URLs for environment images
     const environmentImageBefore = lab.environmentImageBefore
       ? await generateSignedUrl(lab.environmentImageBefore.split(".com/")[1] || "")
       : null;
@@ -182,7 +194,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       ? await generateSignedUrl(lab.environmentImageAfter.split(".com/")[1] || "")
       : null;
 
-    // Add isOwner flag and include signed URLs
     const labWithOwnership = {
       ...lab,
       environmentImageBefore,
@@ -235,4 +246,3 @@ async function deleteFromS3(url: string) {
 
   await s3Client.send(command)
 }
-

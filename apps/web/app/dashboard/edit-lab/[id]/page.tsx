@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../../ui/card"
 import { Label } from "../../../../ui/label"
 import { ArrowLeft, Save, ImageIcon } from "lucide-react"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 
@@ -30,7 +31,7 @@ const stagger = {
 
 export default function EditLab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params)
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -82,7 +83,7 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
         if (lab.environmentImageAfter) {
           setAfterImagePreview(lab.environmentImageAfter)
         }
-      } catch (error) {
+      } catch {
         toast.error("Failed to load lab")
         router.push("/dashboard")
       } finally {
@@ -176,7 +177,7 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
     }
 
     const emptyFields = Object.entries(requiredFields)
-      .filter(([_, value]) => !value)
+      .filter(([ value]) => !value)
       .map(([key]) => key)
 
     if (emptyFields.length > 0) {
@@ -225,9 +226,13 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
 
       toast.success("Lab updated successfully!")
       router.push("/dashboard")
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error:", error)
-      toast.error(error.message || "Failed to update lab")
+      if (error instanceof Error) {
+        toast.error(error.message || "Failed to update lab")
+      } else {
+        toast.error("Failed to update lab")
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -352,10 +357,12 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
                     >
                       {beforeImagePreview ? (
                         <div className="relative w-full aspect-video">
-                          <img
+                          <Image
                             src={beforeImagePreview}
                             alt="Before Preview"
                             className="rounded-lg object-cover w-full h-full"
+                            layout="fill"
+                            objectFit="cover"
                           />
                         </div>
                       ) : (
@@ -386,10 +393,12 @@ export default function EditLab({ params }: { params: Promise<{ id: string }> })
                     >
                       {afterImagePreview ? (
                         <div className="relative w-full aspect-video">
-                          <img
+                          <Image
                             src={afterImagePreview}
                             alt="After Preview"
                             className="rounded-lg object-cover w-full h-full"
+                            layout="fill"
+                            objectFit="cover"
                           />
                         </div>
                       ) : (

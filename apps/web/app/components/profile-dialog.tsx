@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "../../ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card"
 import { User, Mail, Shield, Building2, MapPin, Github, Twitter, Linkedin, Loader2, Camera } from "lucide-react"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import type { Session } from "next-auth"
 import { toast } from "sonner"
@@ -34,30 +35,30 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
+    const fetchProfile = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch(`/aips/profile/${session?.user?.id}`)
+        if (!response.ok) {
+          if (response.status !== 404) {
+            throw new Error("Failed to fetch profile")
+          }
+          return
+        }
+        const data = await response.json()
+        setProfile(data)
+      } catch (error) {
+        console.error('Profile fetch error:', error)
+        toast.error("Failed to load profile")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     if (isOpen && session?.user?.id) {
       fetchProfile()
     }
   }, [isOpen, session?.user?.id])
-
-  const fetchProfile = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(`/aips/profile/${session?.user?.id}`)
-      if (!response.ok) {
-        if (response.status !== 404) {
-          throw new Error("Failed to fetch profile")
-        }
-        return
-      }
-      const data = await response.json()
-      setProfile(data)
-    } catch (error) {
-      console.error('Profile fetch error:', error)
-      toast.error("Failed to load profile")
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   if (!session?.user) return null
 
@@ -85,10 +86,12 @@ export function ProfileDialog({ session }: ProfileDialogProps) {
                   <div className="relative">
                     {profile?.user?.image ? (
                       <div className="relative h-24 w-24 rounded-full overflow-hidden border-4 border-background">
-                        <img
+                        <Image
                           src={profile.user.image}
                           alt={profile.user.name || "Profile"}
                           className="h-full w-full object-cover"
+                          layout="fill"
+                          objectFit="cover"
                           onError={(e) => {
                             console.error('Image failed to load:', e)
                             e.currentTarget.src = "/placeholder.svg"
