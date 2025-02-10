@@ -5,12 +5,6 @@ import { authOptions } from "../../../api/auth.config"
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
-type Context = {
-  params: {
-    id: string;
-  };
-};
-
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -30,7 +24,7 @@ async function generateSignedUrl(key: string) {
 
 export async function PUT(
   request: NextRequest,
-  context: Context
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -44,7 +38,7 @@ export async function PUT(
     }
 
     const existingLab = await db.lab.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     })
 
     if (!existingLab) {
@@ -101,7 +95,7 @@ export async function PUT(
     }
 
     const lab = await db.lab.update({
-      where: { id: context.params.id },
+      where: { id: params.id },
       data: updateData,
     })
 
@@ -114,7 +108,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: Context
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -128,7 +122,7 @@ export async function DELETE(
     }
 
     const existingLab = await db.lab.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
     })
 
     if (!existingLab) {
@@ -148,7 +142,7 @@ export async function DELETE(
     }
 
     await db.lab.delete({
-      where: { id: context.params.id },
+      where: { id: params.id },
     })
 
     return NextResponse.json({ message: "Lab deleted successfully" }, { status: 200 })
@@ -160,7 +154,7 @@ export async function DELETE(
 
 export async function GET(
   request: NextRequest,
-  context: Context
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -170,7 +164,7 @@ export async function GET(
     }
 
     const lab = await db.lab.findUnique({
-      where: { id: context.params.id },
+      where: { id: params.id },
       include: {
         author: {
           select: {
