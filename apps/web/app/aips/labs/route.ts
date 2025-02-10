@@ -4,7 +4,19 @@ import { authOptions } from "../../api/auth.config"
 import db from "@repo/db/client"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-
+import { Prisma } from "@prisma/client"
+// Define the type for lab with author
+type LabWithAuthor = Prisma.LabGetPayload<{
+  include: {
+    author: {
+      select: {
+        id: true;
+        name: true;
+        email: true;
+      }
+    }
+  }
+}>
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -183,6 +195,11 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+
+
+// Rest of your code remains the same until the GET function...
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -200,9 +217,9 @@ export async function GET() {
       orderBy: {
         createdAt: "desc",
       },
-    })
+    }) as LabWithAuthor[]
 
-    const labsWithOwnership = labs.map((lab) => ({
+    const labsWithOwnership = labs.map((lab: LabWithAuthor) => ({
       ...lab,
       isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
     }))
