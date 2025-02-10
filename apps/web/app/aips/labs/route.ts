@@ -4,19 +4,34 @@ import { authOptions } from "../../api/auth.config"
 import db from "@repo/db/client"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-import { Prisma } from "@prisma/client"
+
 // Define the type for lab with author
-type LabWithAuthor = Prisma.LabGetPayload<{
-  include: {
-    author: {
-      select: {
-        id: true;
-        name: true;
-        email: true;
-      }
-    }
-  }
-}>
+interface Author {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
+
+interface Lab {
+  id: string;
+  title: string;
+  difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+  duration: number;
+  description: string;
+  objectives: { title: string; description: string }[];
+  audience: string;
+  prerequisites: string;
+  coveredTopics: { topic: string; details: string }[];
+  steps: Record<string, { [key: string]: string | number | boolean | object }>;
+  authorId: string;
+  published: boolean;
+  environmentImageBefore: string | null;
+  environmentImageAfter: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  author: Author;
+}
+
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -198,8 +213,6 @@ export async function POST(req: NextRequest) {
 
 
 
-// Rest of your code remains the same until the GET function...
-
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -217,12 +230,24 @@ export async function GET() {
       orderBy: {
         createdAt: "desc",
       },
-    }) as LabWithAuthor[]
-
-    const labsWithOwnership = labs.map((lab: LabWithAuthor) => ({
+    })
+    
+    const labsWithOwnership: Lab[] = labs.map((lab) => ({
       ...lab,
+      objectives:
+        typeof lab.objectives === "string"
+          ? JSON.parse(lab.objectives) // Parse if it's a string
+          : lab.objectives,  // Use it directly if it's already an array
+      coveredTopics:
+        typeof lab.coveredTopics === "string"
+          ? JSON.parse(lab.coveredTopics) // Parse if it's a string
+          : lab.coveredTopics,  // Use it directly if it's already an array
+      steps: 
+        lab.steps && typeof lab.steps === 'object' && !Array.isArray(lab.steps) && lab.steps !== null
+          ? lab.steps as Record<string, { [key: string]: string | number | boolean | object }>
+          : {}, // If steps is null, a number, or an array, default to an empty object
       isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
-    }))
+    }));
 
     return new NextResponse(
       JSON.stringify(labsWithOwnership),
@@ -230,7 +255,7 @@ export async function GET() {
     )
   } catch (error) {
     return new NextResponse(
-      JSON.stringify({ error: (error as { message: string }).message || "Failed to fetch labs" }),
+      JSON.stringify({ error: (error as { message: string }).message || "Failed to fetch labs" } ),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
