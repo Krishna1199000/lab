@@ -1,11 +1,9 @@
 import * as React from 'react';
+import PropTypes from 'prop-types';
 
 import { cn } from '../lib/utils';
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
-
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, type, ...props }, ref) => {
     return (
       <input
@@ -20,6 +18,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     );
   }
 );
+
+Input.displayName = 'Input';
+
+Input.propTypes = {
+  className: PropTypes.string,
+  type: PropTypes.string,
+};
 Input.displayName = 'Input';
 
 export { Input };

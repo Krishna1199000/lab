@@ -24,8 +24,10 @@ async function generateSignedUrl(key: string) {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params; // Await the params if they are a Promise
+
   try {
     const session = await getServerSession(authOptions)
 
@@ -38,7 +40,7 @@ export async function PUT(
     }
 
     const existingLab = await db.lab.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     })
 
     if (!existingLab) {
@@ -95,7 +97,7 @@ export async function PUT(
     }
 
     const lab = await db.lab.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: updateData,
     })
 
@@ -108,8 +110,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+
   try {
     const session = await getServerSession(authOptions)
 
@@ -121,8 +124,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden: Only administrators can delete labs" }, { status: 403 })
     }
 
+    const resolvedParams = await params;
     const existingLab = await db.lab.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     })
 
     if (!existingLab) {
@@ -142,7 +146,7 @@ export async function DELETE(
     }
 
     await db.lab.delete({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     })
 
     return NextResponse.json({ message: "Lab deleted successfully" }, { status: 200 })
@@ -154,8 +158,10 @@ export async function DELETE(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
+
   try {
     const session = await getServerSession(authOptions)
 
@@ -164,7 +170,7 @@ export async function GET(
     }
 
     const lab = await db.lab.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         author: {
           select: {

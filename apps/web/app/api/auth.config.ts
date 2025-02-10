@@ -1,10 +1,15 @@
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import db from "@repo/db/client";
+import { NextAuthOptions } from "next-auth";
 import type { Adapter } from "next-auth/adapters";
-import { SessionStrategy, Session } from "next-auth";
+import type { User as NextAuthUser } from "next-auth";
 
-export const authOptions = {
+interface User extends NextAuthUser {
+  role: string;
+}
+
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db) as Adapter,
   providers: [
     GoogleProvider({
@@ -15,12 +20,14 @@ export const authOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET || "secr3t",
   session: { 
-    strategy: "jwt" as SessionStrategy,
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async signIn({ user }: { user: { email: string; name: string; image: string; id?: string; role?: string } }) {
+    async signIn({ user }) {
       try {
+        if (!user.email) return false;
+
         const existingUser = await db.user.findUnique({
           where: { email: user.email }
         });
@@ -29,15 +36,16 @@ export const authOptions = {
           const newUser = await db.user.create({
             data: {
               email: user.email,
-              name: user.name,
-              image: user.image,
+              name: user.name || "",
+              image: user.image || "",
               role: "ADMIN" // Set role as ADMIN for all new users
             }
           });
           user.id = newUser.id;
+          (user as User).role = newUser.role;
         } else {
           user.id = existingUser.id;
-          user.role = existingUser.role;
+          (user as User).role = existingUser.role;
         }
         return true;
       } catch (error) {
@@ -45,17 +53,17 @@ export const authOptions = {
         return false;
       }
     },
-    async jwt({ token, user }: { token: Record<string, unknown>; user?: { id: string; role: string } }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = (user as User).role;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: Record<string, unknown> }) {
-      if (token) {
-        (session.user as { id: string; role: string }).id = token.id as string;
-        (session.user as { id: string; role: string }).role = token.role as string;
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as User).id = token.id as string;
+        (session.user as User).role = token.role as string;
       }
       return session;
     },

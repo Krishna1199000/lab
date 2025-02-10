@@ -78,9 +78,11 @@ async function deleteFromS3(url: string) {
 }
 
 export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params; // Await the params if they are a Promise
+
   try {
     const session = await getServerSession(authOptions)
 
@@ -89,7 +91,7 @@ export async function PUT(
     }
 
     const profile = await db.profile.findUnique({
-      where: { userId: params.id },
+      where: { userId: resolvedParams.id },
       include: {
         user: {
           select: {
@@ -106,7 +108,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const formData = await req.formData()
+    const formData = await request.formData()
     const updateData: { [key: string]: string | null } = {}
 
     // Handle text fields
@@ -146,7 +148,7 @@ export async function PUT(
 
     // Update profile
     const updatedProfile = await db.profile.update({
-      where: { userId: params.id },
+      where: { userId: resolvedParams.id },
       data: updateData,
       include: {
         user: {
@@ -187,9 +189,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
+
   try {
     const session = await getServerSession(authOptions)
 
@@ -198,7 +202,7 @@ export async function DELETE(
     }
 
     const profile = await db.profile.findUnique({
-      where: { userId: params.id },
+      where: { userId: resolvedParams.id },
       select: {
         userId: true,
         image: true,
@@ -218,11 +222,11 @@ export async function DELETE(
     }
 
     await db.profile.delete({
-      where: { userId: params.id },
+      where: { userId: resolvedParams.id },
     })
 
     await db.user.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: { image: null },
     })
 
@@ -237,9 +241,11 @@ export async function DELETE(
 }
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
+
   try {
     const session = await getServerSession(authOptions)
 
@@ -248,7 +254,7 @@ export async function GET(
     }
 
     const profile = await db.profile.findUnique({
-      where: { userId: params.id },
+      where: { userId: resolvedParams.id },
       include: {
         user: {
           select: {
