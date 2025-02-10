@@ -4,16 +4,6 @@ import { authOptions } from "../../api/auth.config"
 import db from "@repo/db/client"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-import { Lab } from "@prisma/client"
-
-// Define a type for the lab with author
-interface LabWithAuthor extends Lab {
-  author: {
-    id: string;
-    name: string | null;
-    email: string | null;
-  }
-}
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
@@ -118,9 +108,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse JSON fields with error handling
-    let objectives: string[] = []
-    let coveredTopics: string[] = []
-    let steps: Record<string, string[]> = {}   
+    let objectives = []
+    let coveredTopics = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let steps: Record<string, any> = {}   
 
     try {
       const objectivesStr = formData.get("objectives")
@@ -131,15 +122,16 @@ export async function POST(req: NextRequest) {
       coveredTopics = coveredTopicsStr ? JSON.parse(coveredTopicsStr as string) : []
       steps = stepsStr ? JSON.parse(stepsStr as string) : {}
     } catch (error: unknown) {
-      console.error(error)
-      
+      console.error(error); 
+  
       if ((error as { code: string }).code === "P2002") {
         return new NextResponse(
           JSON.stringify({ error: "A lab with this title already exists" }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
-    }
+  }
+  
 
     const duration = parseInt(formData.get("duration") as string, 10)
     if (isNaN(duration)) {
@@ -176,6 +168,7 @@ export async function POST(req: NextRequest) {
       { status: 201, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: unknown) {
+    // Handle specific error cases
     if ((error as { code: string }).code === "P2002") {
       return new NextResponse(
         JSON.stringify({ error: "A lab with this title already exists" }),
@@ -183,13 +176,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Handle all other errors
     return new NextResponse(
       JSON.stringify({ error: (error as { message: string }).message || "Failed to create lab" }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
-
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -209,7 +202,7 @@ export async function GET() {
       },
     })
 
-    const labsWithOwnership = labs.map((lab: LabWithAuthor) => ({
+    const labsWithOwnership = labs.map((lab) => ({
       ...lab,
       isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
     }))
