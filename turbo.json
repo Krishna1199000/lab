@@ -5,7 +5,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
       "env": [
         "DATABASE_URL",
         "NEXTAUTH_URL",
@@ -19,7 +19,8 @@
       ]
     },
     "db#build": {
-      "cache": false
+      "cache": false,
+      "outputs": ["dist/**", "node_modules/.prisma/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]

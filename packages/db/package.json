@@ -23,7 +23,8 @@
     "./src/index": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
+    "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
