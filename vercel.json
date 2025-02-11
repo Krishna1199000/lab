@@ -4,8 +4,8 @@
         "PRISMA_GENERATE": "true"
       }
     },
-    "installCommand": "pnpm install",
-    "buildCommand": "pnpm run build",
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
     "outputDirectory": "apps/web/.next",
     "rewrites": [
       {
