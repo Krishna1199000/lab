@@ -30,6 +30,34 @@ interface Lab {
   createdAt: Date;
   updatedAt: Date;
   author: Author;
+  isOwner?: boolean;
+}
+
+// Type for the database response
+type DbLabResponse = {
+  id: string;
+  title: string;
+  difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+  duration: number;
+  description: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  objectives: string | any[];
+  audience: string;
+  prerequisites: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  coveredTopics: string | any[];
+  steps: string | Record<string, { [key: string]: string | number | boolean | object }> | null;
+  authorId: string;
+  published: boolean;
+  environmentImageBefore: string | null;
+  environmentImageAfter: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  author: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  };
 }
 
 const s3Client = new S3Client({
@@ -137,8 +165,7 @@ export async function POST(req: NextRequest) {
     // Parse JSON fields with error handling
     let objectives = []
     let coveredTopics = []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let steps: Record<string, any> = {}   
+    let steps: Record<string, { [key: string]: string | number | boolean | object }> = {}   
 
     try {
       const objectivesStr = formData.get("objectives")
@@ -157,8 +184,7 @@ export async function POST(req: NextRequest) {
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
-  }
-  
+    }
 
     const duration = parseInt(formData.get("duration") as string, 10)
     if (isNaN(duration)) {
@@ -195,7 +221,6 @@ export async function POST(req: NextRequest) {
       { status: 201, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: unknown) {
-    // Handle specific error cases
     if ((error as { code: string }).code === "P2002") {
       return new NextResponse(
         JSON.stringify({ error: "A lab with this title already exists" }),
@@ -203,15 +228,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Handle all other errors
     return new NextResponse(
       JSON.stringify({ error: (error as { message: string }).message || "Failed to create lab" }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
-
-
 
 export async function GET() {
   try {
@@ -230,24 +252,29 @@ export async function GET() {
       orderBy: {
         createdAt: "desc",
       },
-    })
+    }) as DbLabResponse[]
     
-    const labsWithOwnership: Lab[] = labs.map((lab) => ({
-      ...lab,
-      objectives:
-        typeof lab.objectives === "string"
-          ? JSON.parse(lab.objectives) // Parse if it's a string
-          : lab.objectives,  // Use it directly if it's already an array
-      coveredTopics:
-        typeof lab.coveredTopics === "string"
-          ? JSON.parse(lab.coveredTopics) // Parse if it's a string
-          : lab.coveredTopics,  // Use it directly if it's already an array
-      steps: 
-        lab.steps && typeof lab.steps === 'object' && !Array.isArray(lab.steps) && lab.steps !== null
-          ? lab.steps as Record<string, { [key: string]: string | number | boolean | object }>
-          : {}, // If steps is null, a number, or an array, default to an empty object
-      isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
-    }));
+    const labsWithOwnership: Lab[] = labs.map((lab) => {
+      const parsedObjectives = typeof lab.objectives === "string" 
+        ? JSON.parse(lab.objectives) 
+        : lab.objectives;
+
+      const parsedCoveredTopics = typeof lab.coveredTopics === "string"
+        ? JSON.parse(lab.coveredTopics)
+        : lab.coveredTopics;
+
+      const parsedSteps = lab.steps && typeof lab.steps === "string"
+        ? JSON.parse(lab.steps)
+        : lab.steps || {};
+
+      return {
+        ...lab,
+        objectives: parsedObjectives,
+        coveredTopics: parsedCoveredTopics,
+        steps: parsedSteps as Record<string, { [key: string]: string | number | boolean | object }>,
+        isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,
+      };
+    });
 
     return new NextResponse(
       JSON.stringify(labsWithOwnership),
