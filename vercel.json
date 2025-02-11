@@ -1,19 +1,17 @@
 {
     "build": {
-      "env": {
-       "PRISMA_SCHEMA_ENGINE_BINARY": "/tmp/schema.prisma",
-      "PRISMA_SCHEMA_PATH": "packages/db/prisma/schema.prisma",
-      "PRISMA_GENERATE": "true"
-      }
+        "env": {
+            "PRISMA_SCHEMA_PATH": "packages/db/prisma/schema.prisma",
+            "PRISMA_GENERATE": "true"
+        }
     },
     "installCommand": "npm install",
     "buildCommand": "npm run build",
     "outputDirectory": "apps/web/.next",
     "rewrites": [
-      {
-        "source": "/docs/(.*)",
-        "destination": "apps/docs/$1"
-      }
+        {
+            "source": "/docs/(.*)",
+            "destination": "apps/docs/$1"
+        }
     ]
-  }
-  
+}
