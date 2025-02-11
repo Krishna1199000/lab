@@ -2,6 +2,9 @@
 const nextConfig = {
   output: 'standalone',
   transpilePackages: ["@repo/db"], 
+  experimental: {
+    externalDir: true // This allows importing from outside the app directory
+  },
   images: {
     remotePatterns: [
       {

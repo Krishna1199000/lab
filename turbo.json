@@ -18,6 +18,9 @@
         "AWS_SECRET_ACCESS_KEY"
       ]
     },
+    "db#build": {
+      "cache": false
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },
