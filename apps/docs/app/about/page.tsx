@@ -56,7 +56,7 @@ export default function About() {
                 real datasets, build practical skills, and receive guidance from industry experts.
               </p>
               <p className="text-blue-200">
-                Whether you're just starting your journey in data science or looking to advance your 
+                Whether  just starting your journey in data science or looking to advance your 
                 career, our platform provides the tools, resources, and support you need to succeed.
               </p>
             </div>

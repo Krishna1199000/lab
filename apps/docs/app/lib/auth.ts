@@ -4,6 +4,18 @@ import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 import db  from "@repo/db/client"
 import { compare } from "bcrypt"
+import "next-auth"
+
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
@@ -56,7 +68,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ token, session }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.id as string
         session.user.name = token.name
         session.user.email = token.email

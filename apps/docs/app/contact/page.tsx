@@ -49,7 +49,7 @@ export default function Contact() {
                 Get in Touch
               </h1>
               <p className="text-blue-200">
-                Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+                Have questions?  love to hear from you. Send us a message and  respond as soon as possible.
               </p>
             </div>
 

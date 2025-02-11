@@ -396,10 +396,12 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                         <div className="relative -mt-16 mb-4">
                           {authorProfile?.user?.image ? (
                             <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-800 shadow-lg">
-                              <img
+                              <Image
                                 src={authorProfile.user.image}
                                 alt={lab.author.name}
                                 className="h-full w-full object-cover"
+                                width={128}
+                                height={128}
                                 onError={(e) => {
                                   console.error('Image failed to load:', e)
                                   e.currentTarget.src = "/placeholder.svg"

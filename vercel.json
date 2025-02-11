@@ -1,0 +1,23 @@
+{
+    "build": {
+      "env": {
+        "PRISMA_GENERATE": "true"
+      }
+    },
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "outputDirectory": "apps/web/.next",
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "apps/web/$1"
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/docs/(.*)",
+        "destination": "apps/docs/$1"
+      }
+    ]
+  }
+  

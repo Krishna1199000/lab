@@ -1,9 +1,10 @@
-import { Loader2, LightbulbIcon, User } from 'lucide-react'
+import { Loader2, LightbulbIcon } from 'lucide-react'
+import { SVGProps } from 'react'
 
 export const Icons = {
   logo: LightbulbIcon,
   spinner: Loader2,
-  google: (props: any) => (
+  google: (props: SVGProps<SVGSVGElement>) => (
     <svg role="img" viewBox="0 0 24 24" {...props}>
       <path
         fill="currentColor"
