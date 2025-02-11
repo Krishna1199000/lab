@@ -2,8 +2,7 @@
   "name": "data-vidya",
   "private": true,
   "scripts": {
-    "prisma:generate": "prisma generate --schema=packages/db/prisma/schema.prisma",
-    "build": "npm run prisma:generate && turbo run build",
+    "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""

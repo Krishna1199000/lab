@@ -5,8 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "prebuild": "mkdir -p prisma && cp ../../packages/db/prisma/schema.prisma prisma/schema.prisma",
-    "build": "prisma generate --schema=prisma/schema.prisma && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
     "check-types": "tsc --noEmit"
