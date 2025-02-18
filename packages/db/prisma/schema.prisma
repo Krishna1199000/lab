@@ -46,15 +46,12 @@ model Lab {
   title         String
   difficulty    Difficulty @default(BEGINNER)
   duration      Int
-  description   String    @db.Text
-  objectives    String[]
-  audience      String    @db.Text
-  prerequisites String    @db.Text
-  environmentImageBefore String?
-  environmentImageAfter  String?
+  content       String    @db.Text @default("")
   coveredTopics String[]
   steps         Json
   published     Boolean   @default(false)
+  environmentImageBefore String?
+  environmentImageAfter  String?
   author        User      @relation(fields: [authorId], references: [id])
   authorId      String
   createdAt     DateTime  @default(now())

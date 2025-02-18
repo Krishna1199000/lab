@@ -4,15 +4,15 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "../../../ui/button"
 import { Input } from "../../../ui/input"
-import { Textarea } from "../../../ui/textarea"
+import { Editor } from '@tinymce/tinymce-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../ui/card"
 import { Label } from "../../../ui/label"
+import { Textarea } from "../../../ui/textarea"
 import { ArrowLeft, Upload, ImageIcon } from 'lucide-react'
 import { motion } from "framer-motion"
 import { toast } from "sonner"
-import Image from "next/image";
-
+import Image from "next/image"
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -38,16 +38,13 @@ export default function CreateLab() {
   const [beforeImagePreview, setBeforeImagePreview] = useState<string | null>(null)
   const [afterImagePreview, setAfterImagePreview] = useState<string | null>(null)
   const [difficulty, setDifficulty] = useState("BEGINNER")
-  const totalSections = 4
+  const totalSections = 3
 
   const [formData, setFormData] = useState({
     title: "",
     difficulty: "BEGINNER",
     duration: "",
-    description: "",
-    audience: "",
-    prerequisites: "",
-    objectives: "",
+    content: "",
     coveredTopics: "",
     environment: "",
     steps: "",
@@ -56,12 +53,10 @@ export default function CreateLab() {
   const validateCurrentSection = () => {
     switch (currentSection) {
       case 0:
-        return formData.title.trim() !== "" && formData.duration.trim() !== "" && formData.description.trim() !== ""
+        return formData.title.trim() !== "" && formData.duration.trim() !== "" && formData.content.trim() !== ""
       case 1:
-        return formData.audience.trim() !== "" && formData.prerequisites.trim() !== ""
-      case 2:
         return formData.coveredTopics.trim() !== ""
-      case 3:
+      case 2:
         return formData.steps.trim() !== ""
       default:
         return false
@@ -81,6 +76,13 @@ export default function CreateLab() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }))
+  }
+
+  const handleEditorChange = (content: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      content,
     }))
   }
 
@@ -128,13 +130,11 @@ export default function CreateLab() {
     const requiredFields = {
       title: formData.title.trim(),
       duration: formData.duration.trim(),
-      description: formData.description.trim(),
-      audience: formData.audience.trim(),
-      prerequisites: formData.prerequisites.trim(),
+      content: formData.content.trim(),
     }
 
     const emptyFields = Object.entries(requiredFields)
-      .filter(([value]) => !value)
+      .filter(([_, value]) => !value)
       .map(([key]) => key)
 
     if (emptyFields.length > 0) {
@@ -149,9 +149,7 @@ export default function CreateLab() {
 
       formDataObj.set("title", formData.title)
       formDataObj.set("duration", formData.duration)
-      formDataObj.set("description", formData.description)
-      formDataObj.set("audience", formData.audience)
-      formDataObj.set("prerequisites", formData.prerequisites)
+      formDataObj.set("content", formData.content)
       formDataObj.set("difficulty", difficulty)
       formDataObj.set("authorId", (session?.user as { id: string }).id || "")
 
@@ -163,12 +161,10 @@ export default function CreateLab() {
         formDataObj.set("environmentImageAfter", selectedAfterFile)
       }
 
-      const objectives = formData.objectives.split("\n").filter(Boolean)
       const coveredTopics = formData.coveredTopics.split("\n").filter(Boolean)
       const environmentUrls = formData.environment.split("\n").filter(Boolean)
       const steps = formData.steps.split("\n").filter(Boolean)
 
-      formDataObj.set("objectives", JSON.stringify(objectives))
       formDataObj.set("coveredTopics", JSON.stringify(coveredTopics))
       formDataObj.set("environment", JSON.stringify({ images: environmentUrls }))
       formDataObj.set("steps", JSON.stringify({ setup: steps }))
@@ -185,14 +181,14 @@ export default function CreateLab() {
 
       toast.success("Lab created successfully!")
       router.push("/dashboard")
-    }  catch (error: unknown) {
+    } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error('Detailed error:', error.message);
-        console.error('Error stack:', error.stack);
-        toast.error(error.message || "Failed to create lab. Please try again.");
+        console.error('Detailed error:', error.message)
+        console.error('Error stack:', error.stack)
+        toast.error(error.message || "Failed to create lab. Please try again.")
       } else {
-        console.error('An unknown error occurred:', error);
-        toast.error("An unexpected error occurred.");
+        console.error('An unknown error occurred:', error)
+        toast.error("An unexpected error occurred.")
       }
     }
   }
@@ -244,49 +240,30 @@ export default function CreateLab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                name="description"
-                required
-                value={formData.description}
-                onChange={handleInputChange}
+              <Label htmlFor="content">Content</Label>
+              <Editor
+                apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY}
+                init={{
+                  height: 500,
+                  menubar: false,
+                  plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                  ],
+                  toolbar: 'undo redo | blocks | ' +
+                    'bold italic forecolor | alignleft aligncenter ' +
+                    'alignright alignjustify | bullist numlist outdent indent | ' +
+                    'removeformat | help',
+                  content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+                }}
+                value={formData.content}
+                onEditorChange={handleEditorChange}
               />
             </div>
           </motion.div>
         )
       case 1:
-        return (
-          <motion.div {...fadeIn} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="objectives">Objectives (one per line)</Label>
-              <Textarea
-                id="objectives"
-                name="objectives"
-                required
-                value={formData.objectives}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="audience">Target Audience</Label>
-              <Textarea id="audience" name="audience" required value={formData.audience} onChange={handleInputChange} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="prerequisites">Prerequisites</Label>
-              <Textarea
-                id="prerequisites"
-                name="prerequisites"
-                required
-                value={formData.prerequisites}
-                onChange={handleInputChange}
-              />
-            </div>
-          </motion.div>
-        )
-      case 2:
         return (
           <motion.div {...fadeIn} className="space-y-6">
             <div className="space-y-4">
@@ -367,17 +344,6 @@ export default function CreateLab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="environment">Additional Environment URLs (one per line)</Label>
-              <Textarea
-                id="environment"
-                name="environment"
-                placeholder="Enter additional image URLs, one per line"
-                value={formData.environment}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="coveredTopics">Covered Topics (one per line)</Label>
               <Textarea
                 id="coveredTopics"
@@ -389,7 +355,7 @@ export default function CreateLab() {
             </div>
           </motion.div>
         )
-      case 3:
+      case 2:
         return (
           <motion.div {...fadeIn} className="space-y-6">
             <div className="space-y-2">

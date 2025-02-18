@@ -1,4 +1,5 @@
 "use client"
+
 import * as React from "react"
 import { useEffect, useState, use } from "react"
 import { notFound, useRouter } from "next/navigation"
@@ -45,19 +46,13 @@ interface Profile {
 interface Lab {
   id: string
   title: string
-  description: string
+  content: string
   difficulty: string
   duration: number
   views: number
   rating: {
     score: number
     total: number
-  }
-  objectives: string[]
-  prerequisites: string | string[]
-  environment: {
-    before: string
-    after: string
   }
   author: {
     id: string
@@ -79,8 +74,7 @@ interface Lab {
     rules: string[]
     warning: string
   }
-  coveredTopics: string[]
-  audience: string
+  coveredTopics: { topic: string; details: string }[]
   environmentImageBefore?: string
   environmentImageAfter?: string
 }
@@ -94,7 +88,6 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
   const { status } = useSession()
 
   useEffect(() => {
-    console.log("useEffect triggered with params.id:", resolvedParams.id)
     if (resolvedParams.id) {
       fetchLab()
     }
@@ -129,7 +122,6 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
   }
 
   const fetchLab = async () => {
-    console.log("Fetching lab data...")
     try {
       const response = await fetch(`http://localhost:3000/aips/labs/${resolvedParams.id}`, {
         method: "GET",
@@ -143,7 +135,6 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
       const data = await response.json()
       console.log("Fetched lab data:", data)
 
-      // Extract steps from the nested structure
       let parsedSteps = []
       if (data.steps && data.steps.setup && Array.isArray(data.steps.setup)) {
         parsedSteps = data.steps.setup.map((step: string, index: number) => ({
@@ -152,9 +143,17 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
         }))
       }
 
+      // Ensure coveredTopics is an array
+      const coveredTopics = Array.isArray(data.coveredTopics) 
+        ? data.coveredTopics 
+        : typeof data.coveredTopics === 'string' 
+          ? [{ topic: data.coveredTopics, details: '' }]
+          : []
+
       setLab({
         ...data,
         steps: parsedSteps,
+        coveredTopics
       })
     } catch (error) {
       console.error("Error fetching lab:", error)
@@ -291,55 +290,26 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                 </TabsList>
                 <TabsContent value="about" className="space-y-8 pt-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-foreground mb-4">Description</h2>
                     <div className="prose prose-gray dark:prose-invert max-w-none">
-                      <p>{lab.description}</p>
+                      <div dangerouslySetInnerHTML={{ __html: lab.content }} />
                     </div>
                   </div>
-
-                  <div>
-                    <h2 className="text-xl font-semibold text-foreground mb-4">Lab Objectives</h2>
-                    <div className="prose prose-gray dark:prose-invert max-w-none">
-                      <ul>
-                        {lab.objectives?.map((objective, index) => (
-                          <li key={index}>{objective}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {lab.prerequisites && (
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground mb-4">Lab Prerequisites</h2>
-                      <div className="prose prose-gray dark:prose-invert max-w-none space-y-2">
-                        {Array.isArray(lab.prerequisites) ? (
-                          <ul>
-                            {lab.prerequisites.map((prerequisite, index) => (
-                              <li key={index}>{prerequisite}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p>{lab.prerequisites}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                   <div>
                     <h2 className="text-xl font-semibold text-foreground mb-4">Covered Topics</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {lab.coveredTopics.map((topic, index) => (
-                        <Badge key={index} variant="secondary">
-                          {topic}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h2 className="text-xl font-semibold text-foreground mb-4">Intended Audience</h2>
-                    <div className="prose prose-gray dark:prose-invert max-w-none">
-                      <div dangerouslySetInnerHTML={{ __html: lab.audience }} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Array.isArray(lab.coveredTopics) && lab.coveredTopics.length > 0 ? (
+                        lab.coveredTopics.map((topic, index) => (
+                          <div key={index} className="bg-card border border-border rounded-lg p-4">
+                            <h3 className="font-medium text-foreground mb-2">{topic.topic}</h3>
+                            {topic.details && (
+                              <p className="text-sm text-muted-foreground">{topic.details}</p>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-2 text-muted-foreground">No topics available for this lab.</div>
+                      )}
                     </div>
                   </div>
 
@@ -349,8 +319,8 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                       <div className="space-y-6">
                         {lab.environmentImageBefore && (
                           <div>
-                            <p className="italic mb-4">
-                              Before completing the Lab instructions, the environment will look as follows:
+                            <p className="text-sm text-muted-foreground italic mb-4">
+                              Initial lab environment:
                             </p>
                             <div className="border rounded-lg p-4 bg-card">
                               <Image
@@ -358,7 +328,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                                 alt="Initial lab environment"
                                 width={800}
                                 height={400}
-                                className="w-full"
+                                className="w-full rounded-md"
                                 unoptimized
                               />
                             </div>
@@ -366,8 +336,8 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                         )}
                         {lab.environmentImageAfter && (
                           <div>
-                            <p className="italic mb-4">
-                              After completing the Lab instructions, the environment should look similar to:
+                            <p className="text-sm text-muted-foreground italic mb-4">
+                              Expected final environment:
                             </p>
                             <div className="border rounded-lg p-4 bg-card">
                               <Image
@@ -375,7 +345,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                                 alt="Final lab environment"
                                 width={800}
                                 height={400}
-                                className="w-full"
+                                className="w-full rounded-md"
                                 unoptimized
                               />
                             </div>
@@ -388,11 +358,9 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                 <TabsContent value="author" className="pt-6">
                   {lab?.author && (
                     <div className="bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
-                      {/* Cover Image - Gradient Background */}
                       <div className="h-32 bg-gradient-to-r from-blue-900 to-indigo-900"></div>
 
                       <div className="relative px-6 pb-8">
-                        {/* Author Avatar */}
                         <div className="relative -mt-16 mb-4">
                           {authorProfile?.user?.image ? (
                             <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-800 shadow-lg">
@@ -415,15 +383,12 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                           )}
                         </div>
 
-                        {/* Author Info */}
                         <div className="space-y-6">
-                          {/* Name and Title */}
                           <div>
                             <h3 className="text-2xl font-bold text-white">{lab.author.name}</h3>
                             <p className="text-lg text-gray-400">{lab.author.title}</p>
                           </div>
 
-                          {/* Location and Company */}
                           {authorProfile && (
                             <div className="flex flex-wrap gap-6 text-gray-400">
                               {authorProfile.location && (
@@ -441,14 +406,12 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                             </div>
                           )}
 
-                          {/* Bio */}
                           {authorProfile?.bio && (
                             <div className="prose prose-invert max-w-none">
                               <p className="text-gray-300 leading-relaxed">{authorProfile.bio}</p>
                             </div>
                           )}
 
-                          {/* Social Links */}
                           <div className="flex flex-wrap gap-4">
                             {authorProfile?.linkedin && (
                               <a
@@ -485,7 +448,6 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                             )}
                           </div>
 
-                          {/* Stats */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
                             <div className="bg-gray-800 p-4 rounded-lg">
                               <div className="text-4xl font-bold text-blue-400 mb-2">
@@ -500,12 +462,13 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                               <div className="text-sm text-gray-400">Average Rating</div>
                             </div>
                             <div className="bg-gray-800 p-4 rounded-lg">
-                              <div className="text-4xl font-bold text-blue-400 mb-2">{lab.objectives?.length || 0}</div>
-                              <div className="text-sm text-gray-400">Learning Objectives</div>
+                              <div className="text-4xl font-bold text-blue-400 mb-2">
+                                {lab.coveredTopics.length}
+                              </div>
+                              <div className="text-sm text-gray-400">Covered Topics</div>
                             </div>
                           </div>
 
-                          {/* Topics of Expertise */}
                           <div className="mt-8">
                             <h4 className="text-lg font-semibold text-white mb-4">Topics of Expertise</h4>
                             <div className="flex flex-wrap gap-2">
@@ -515,7 +478,7 @@ export default function LabPage({ params }: { params: Promise<{ id: string }> })
                                   variant="secondary"
                                   className="bg-gray-700 text-gray-200 hover:bg-gray-600"
                                 >
-                                  {topic}
+                                  {topic.topic}
                                 </Badge>
                               ))}
                             </div>

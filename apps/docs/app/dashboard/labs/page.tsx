@@ -107,7 +107,7 @@ export default function LabsPage() {
   const filteredLabs = labs.filter(
     (lab) =>
       lab.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lab.description.toLowerCase().includes(searchQuery.toLowerCase()),
+      lab.content.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   if (loading) {
@@ -214,7 +214,9 @@ export default function LabsPage() {
 
                 <div className="space-y-2">
                   <h2 className="text-lg font-semibold text-gray-900 line-clamp-2">{lab.title}</h2>
-                  <p className="text-sm text-gray-600 line-clamp-2">{lab.description}</p>
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {lab.content.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                  </p>
                 </div>
 
                 <div className="pt-4 flex items-center justify-between border-t border-gray-100">
@@ -229,7 +231,9 @@ export default function LabsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">{lab.objectives.length} Lab steps</span>
+                    <span className="text-sm text-gray-500">
+                      {lab.coveredTopics.length} Topics
+                    </span>
                   </div>
                 </div>
               </div>

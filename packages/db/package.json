@@ -1,30 +1,24 @@
 {
   "name": "@repo/db",
   "version": "1.0.0",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "index.js",
   "license": "MIT",
-  "type": "module",
-  "description": "",
-  "keywords": [],
-  "author": "",
   "devDependencies": {
     "typescript": "^5.7.3"
+  },
+  "exports": {
+    "./client": "./src/index.ts",
+    "./src/index": "./src/index.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "prisma": "^6.2.1"
   },
-  "exports": {
-    "./client": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./src/index": "./src/index.ts"
-  },
   "scripts": {
-    "build": "prisma generate && tsc",
-    "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
-  }
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "description": ""
 }

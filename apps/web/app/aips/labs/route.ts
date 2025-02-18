@@ -17,10 +17,7 @@ interface Lab {
   title: string;
   difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
   duration: number;
-  description: string;
-  objectives: { title: string; description: string }[];
-  audience: string;
-  prerequisites: string;
+  content: string;
   coveredTopics: { topic: string; details: string }[];
   steps: Record<string, { [key: string]: string | number | boolean | object }>;
   authorId: string;
@@ -39,11 +36,7 @@ type DbLabResponse = {
   title: string;
   difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
   duration: number;
-  description: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  objectives: string | any[];
-  audience: string;
-  prerequisites: string;
+  content: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   coveredTopics: string | any[];
   steps: string | Record<string, { [key: string]: string | number | boolean | object }> | null;
@@ -124,9 +117,7 @@ export async function POST(req: NextRequest) {
     const requiredFields = [
       "title",
       "duration",
-      "description",
-      "audience",
-      "prerequisites",
+      "content"
     ]
     
     const missingFields = requiredFields.filter((field) => {
@@ -163,16 +154,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse JSON fields with error handling
-    let objectives = []
     let coveredTopics = []
     let steps: Record<string, { [key: string]: string | number | boolean | object }> = {}   
 
     try {
-      const objectivesStr = formData.get("objectives")
       const coveredTopicsStr = formData.get("coveredTopics")
       const stepsStr = formData.get("steps")
 
-      objectives = objectivesStr ? JSON.parse(objectivesStr as string) : []
       coveredTopics = coveredTopicsStr ? JSON.parse(coveredTopicsStr as string) : []
       steps = stepsStr ? JSON.parse(stepsStr as string) : {}
     } catch (error: unknown) {
@@ -203,10 +191,7 @@ export async function POST(req: NextRequest) {
           | "INTERMEDIATE"
           | "ADVANCED",
         duration,
-        description: formData.get("description") as string,
-        objectives,
-        audience: formData.get("audience") as string,
-        prerequisites: formData.get("prerequisites") as string,
+        content: formData.get("content") as string,
         coveredTopics,
         steps,
         authorId: session.user.id,
@@ -255,10 +240,6 @@ export async function GET() {
     }) as DbLabResponse[]
     
     const labsWithOwnership: Lab[] = labs.map((lab) => {
-      const parsedObjectives = typeof lab.objectives === "string" 
-        ? JSON.parse(lab.objectives) 
-        : lab.objectives;
-
       const parsedCoveredTopics = typeof lab.coveredTopics === "string"
         ? JSON.parse(lab.coveredTopics)
         : lab.coveredTopics;
@@ -269,7 +250,6 @@ export async function GET() {
 
       return {
         ...lab,
-        objectives: parsedObjectives,
         coveredTopics: parsedCoveredTopics,
         steps: parsedSteps as Record<string, { [key: string]: string | number | boolean | object }>,
         isOwner: session?.user?.role === "ADMIN" && session?.user?.id === lab.authorId,

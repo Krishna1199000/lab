@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "prisma generate && next build",
     "dev": "next dev --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
     "check-types": "tsc --noEmit"
@@ -24,7 +24,9 @@
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.4",
     "@repo/ui": "*",
+    "@tinymce/tinymce-react": "^5.1.1",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.5.1",
     "dotenv": "^16.4.7",
     "framer-motion": "^11.18.0",
     "lucide-react": "^0.471.0",
@@ -39,7 +41,6 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@repo/db": "*",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/node": "^20",

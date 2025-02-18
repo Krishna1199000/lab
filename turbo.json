@@ -5,7 +5,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "outputs": [".next/**", "!.next/cache/**"],
       "env": [
         "DATABASE_URL",
         "NEXTAUTH_URL",
@@ -17,10 +17,6 @@
         "AWS_ACCESS_KEY_ID",
         "AWS_SECRET_ACCESS_KEY"
       ]
-    },
-    "db#build": {
-      "cache": false,
-      "outputs": ["dist/**", "node_modules/.prisma/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
